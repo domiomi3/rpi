@@ -8,38 +8,46 @@ from Bio.Seq import Seq
 from pathlib import Path
 from tqdm import tqdm
 import uuid
-
+from subprocess import PIPE, run
 import os
+import shutil
 
 """
 Clusters protein sequences with CD-HIT.
 Requires https://github.com/weizhongli/cdhit
+pip install Biopython
 """
 
-CD_HIT_PATH = "cd-hit"
-CD_HIT_EST_PATH = "cd-hit-est"
+CD_HIT_EST_PATH = "/Users/lars/Downloads/cd-hit/cd-hit-est"
+
+RNA_SEQUENCES_PATH = "../../results/rna_sequences_short.parquet"
+PROTEIN_SEQUENCES_PATH = "../../results/protein_sequences_short.parquet"
 
 rng = np.random.default_rng(seed=0)
-working_dir = '../shuffle'
+WORKING_DIR = '../shuffle'
+Path(WORKING_DIR).mkdir(parents=True, exist_ok=True)
+RESULTS_DIR = "../../results"
 
 
 def df2fasta(df: pd.DataFrame, fasta_path: Path, idx: str):
     with open(fasta_path, 'w') as handle:
-        sequences = [SeqRecord(Seq(row[f'Sequence_{idx}']), id=f"{row[f'Raw_ID{idx}']}_{row[f'Sequence_{idx}_ID']}") for _, row in
+        sequences = [SeqRecord(Seq(row[f'Sequence_{idx}']), id=f"{row[f'Raw_ID{idx}']}_{row[f'Sequence_{idx}_ID']}") for
+                     _, row in
                      df.iterrows()]
         SeqIO.write(sequences, handle, "fasta")
 
 
 def get_new_sequences(cluster, row):
-    out_path = Path(working_dir, f"{str(uuid.uuid4())}_cluster_2.fasta")
+    # required to check if a sequence is already in a cluster
+    out_path = Path(WORKING_DIR, f"{str(uuid.uuid4())}_cluster_2.fasta")
     shuffled = row['Sequence_1_ID']
-    fasta_path_keep = Path(working_dir, f'{str(uuid.uuid4())}_keep.fasta')
-    fasta_path_reduce = Path(working_dir, f"{str(uuid.uuid4())}_reduced.fasta")
+    fasta_path_keep = Path(WORKING_DIR, f'{str(uuid.uuid4())}_keep.fasta')
+    fasta_path_reduce = Path(WORKING_DIR, f"{str(uuid.uuid4())}_reduced.fasta")
 
     df2fasta(cluster, fasta_path_reduce, "1")
     with open(fasta_path_keep, 'w') as handle:
         SeqIO.write([SeqRecord(Seq(shuffled), id=row['Id'])], handle, "fasta")
-    base_args = [CD_HIT_PATH,
+    base_args = [CD_HIT_EST_PATH,
                  '-i', str(fasta_path_keep.resolve()),
                  '-i2', str(fasta_path_reduce.resolve()),
                  '-o', str(out_path.resolve())]
@@ -68,15 +76,16 @@ def get_new_sequences(cluster, row):
 
 
 def get_new_sequences_protein(cluster, row):
-    out_path = Path(working_dir, f"{str(uuid.uuid4())}_cluster_2.fasta")
+    # required to check if a sequence is already in a cluster
+    out_path = Path(WORKING_DIR, f"{str(uuid.uuid4())}_cluster_2.fasta")
     shuffled = row['Sequence_2_ID']
-    fasta_path_keep = Path(working_dir, f'{str(uuid.uuid4())}_keep.fasta')
-    fasta_path_reduce = Path(working_dir, f"{str(uuid.uuid4())}_reduced.fasta")
+    fasta_path_keep = Path(WORKING_DIR, f'{str(uuid.uuid4())}_keep.fasta')
+    fasta_path_reduce = Path(WORKING_DIR, f"{str(uuid.uuid4())}_reduced.fasta")
 
     df2fasta(cluster, fasta_path_reduce, "2")
     with open(fasta_path_keep, 'w') as handle:
         SeqIO.write([SeqRecord(Seq(shuffled), id=row['Id'])], handle, "fasta")
-    base_args = [CD_HIT_PATH,
+    base_args = [CD_HIT_EST_PATH,
                  '-i', str(fasta_path_keep.resolve()),
                  '-i2', str(fasta_path_reduce.resolve()),
                  '-o', str(out_path.resolve())]
@@ -105,14 +114,14 @@ def get_new_sequences_protein(cluster, row):
 
 
 def cluster_proteins():
-    fasta_path = Path(working_dir, 'inter_protein_cluster.fasta')
-    ana_path = Path(fasta_path.stem + '.ana')
-    ana_clstr_path = Path(ana_path.stem + '.ana.clstr')
-    df = pd.read_parquet('../../results/rpi2825/protein_sequences.parquet', engine='pyarrow')
+    fasta_path = Path(WORKING_DIR, 'inter_protein_cluster.fasta')
+    ana_path = Path(os.path.join(WORKING_DIR, fasta_path.stem + '.ana'))
+    ana_clstr_path = Path(os.path.join(WORKING_DIR, fasta_path.stem + '.ana.clstr'))
+    df = pd.read_parquet(PROTEIN_SEQUENCES_PATH, engine='pyarrow')
     df2fasta(df, fasta_path, "2")
 
     args = [
-        "-c", str(0.9),
+        "-c", str(0.8),
         "-n", str(5),
         "-aS", str(0.0),
         "-s", str(0.0),
@@ -123,10 +132,10 @@ def cluster_proteins():
         "-d", "0",
         "-T", "0",
     ]
+    result = run([CD_HIT_EST_PATH, "-i", str(fasta_path.resolve()),
+                  "-o", str(ana_path.resolve())] + args, stdout=PIPE, stderr=PIPE, universal_newlines=True)
 
-    subprocess.call([CD_HIT_PATH, "-i", str(fasta_path.resolve()),
-                     "-o", str(ana_path.resolve())] + args, stdout=subprocess.DEVNULL,
-                    stderr=subprocess.STDOUT)  # , stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(result.returncode, result.stdout, result.stderr)
 
     clusters = []
     with open(ana_clstr_path, 'r') as f:
@@ -146,21 +155,20 @@ def cluster_proteins():
 
     df['Sequence_2_cluster_reference'] = df['Sequence_2_cluster_sim'].apply(lambda x: x == '*')
     df = df.drop(['Id'], axis=1)
-    df.to_parquet('../results/rpi2825/protein_sequences_clusters.parquet', engine='pyarrow')
-    print(df.columns)
+    df.to_parquet(os.path.join(RESULTS_DIR, 'protein_sequences_clusters.parquet'), engine='pyarrow')
     print("Proteins with clustered stored.")
 
 
-def main():
+def cluster_rnas():
     """
     Cluster RNA sequences
     """
-    fasta_path = Path(working_dir, 'inter_family_test.fasta')
-    ana_path = Path(fasta_path.stem + '.ana')
-    ana_clstr_path = Path(ana_path.stem + '.ana.clstr')
+    fasta_path = Path(WORKING_DIR, 'inter_rna_cluster.fasta')
+    ana_path = Path(os.path.join(WORKING_DIR, fasta_path.stem + '.ana'))
+    ana_clstr_path = Path(os.path.join(WORKING_DIR, fasta_path.stem + '.ana.clstr'))
 
     # df = pd.read_pickle('data/inter_family_benchmark.plk.gz')
-    df = pd.read_parquet('../../results/rpi2825/rna_sequences.parquet', engine='pyarrow')
+    df = pd.read_parquet(RNA_SEQUENCES_PATH, engine='pyarrow')
 
     df2fasta(df, fasta_path, "1")
 
@@ -176,9 +184,10 @@ def main():
         "-d", "0",
         "-T", "0",
     ]
-    subprocess.call([CD_HIT_EST_PATH, "-i", str(fasta_path.resolve()),
-                     "-o", str(ana_path.resolve())] + args, stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT)  # , stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = run([CD_HIT_EST_PATH, "-i", str(fasta_path.resolve()),
+                  "-o", str(ana_path.resolve())] + args, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+
+    print(result.returncode, result.stdout, result.stderr)
 
     clusters = []
     with open(ana_clstr_path, 'r') as f:
@@ -192,7 +201,7 @@ def main():
                 score = line.split()[-1]
                 clusters.append((current_cluster, s_id, score))
     clusters = pd.DataFrame(clusters, columns=['Sequence_1_cluster', 'Id', 'Sequence_1_cluster_sim'])
-    clusters.to_parquet('clusters.parquet', engine='pyarrow')
+    # clusters.to_parquet('clusters.parquet', engine='pyarrow')
 
     df['Id'] = df['Raw_ID1'].astype(str) + '_' + df['Sequence_1_ID'].astype(str)
     df = df.merge(clusters, on='Id')
@@ -200,32 +209,11 @@ def main():
     df['Sequence_1_cluster_reference'] = df['Sequence_1_cluster_sim'].apply(lambda x: x == '*')
 
     df = df.drop(['Id'], axis=1)
-    df.to_parquet('rna_sequences_clusters.parquet', engine='pyarrow')
+    df.to_parquet(os.path.join(RESULTS_DIR, 'rna_sequences_clusters.parquet'), engine='pyarrow')
     print("RNAs with clustered stored.")
-
-    args = []
-    for cluster_id, cluster in tqdm(df.groupby('Sequence_1_cluster')):
-        fasta_path_reduce = Path(working_dir, f'{cluster_id}_reduce.fasta')
-        df2fasta(cluster, fasta_path_reduce, "1")
-        for i, row in cluster.iterrows():
-            args.append((cluster, row, fasta_path_reduce))
-
-    """
-    pbar = tqdm(total=len(args))
-    jobs = []
-    with Pool() as pool:
-        for arg_set in args:
-            jobs.append(pool.apply_async(get_new_sequences, arg_set, callback=lambda x: pbar.update()))
-        pool.close()
-        pool.join()
-    results = [job.get() for job in jobs]
-    """
-    # df = df.drop(['Id'], axis=1)
-    df.to_parquet('../results/rpi2825/rna_sequences_clusters.parquet', engine='pyarrow')
-    print(df.columns)
-    print("RNAs with clustered stored.")
-    # results = pool.starmap(get_new_sequences, args)
 
 
 if __name__ == '__main__':
     cluster_proteins()
+    cluster_rnas()
+    shutil.rmtree(WORKING_DIR)

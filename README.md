@@ -42,3 +42,10 @@ follow instruction on [dataset/scripts/annotate/export_sequences.ipynb](https://
 to limit RNA & Protein sequence lengths. 
 Store sequences to parquet file (rna_sequences_short.parquet, protein_sequences_short.parquet)
 
+## Step 2: Annotate sequences with cluster information
+run script [dataset/scripts/annotate/cluster_sequences.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/cluster_sequences.py).
+Store annotated sequences to parquet file (rna_sequences_cluster.parquet, protein_sequences_clusters.parquet)
+
+## Step 3: Annotate RNA sequences with RNA family information
+run script [dataset/scripts/annotate/get_RNA_family.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/get_RNA_family.py).
+Store annotated sequences to parquet file (rna_sequences_short_families.parquet)

@@ -23,5 +23,5 @@ tar -xvzf miRNA.dat.gz
 # Get scraped sequence data
 available on KI-SLURM Cluster
 ```
-\data\datasets\RNAProteinInteraction
+\data\datasets\RNAProteinInteractions
 ```

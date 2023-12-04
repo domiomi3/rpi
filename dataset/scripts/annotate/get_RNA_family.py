@@ -11,12 +11,10 @@ or via:
 
 """
 
-
 import subprocess
 
 import pandas as pd
 
-# from RnaBench.lib.utils import df2fasta
 from typing import Union
 from pathlib import Path
 from Bio.SeqRecord import SeqRecord
@@ -28,7 +26,15 @@ from tqdm import tqdm
 from multiprocessing import Pool
 from time import time
 
+# needs to be downloaded
+# e.g. download_rfam_cms function
+CM_PATH = 'family/Rfam.cm'
+CLANIN_PATH = 'family/Rfam.clanin'
 
+CM_SCAN_PATH = "/Users/lars/Downloads/infernal/src/cmscan"
+RNA_SEQUENCES_PATH = '../../results/rna_sequences_short.parquet'
+WORKING_DIR = "family"
+Path(WORKING_DIR).mkdir(parents=True, exist_ok=True)
 
 def df2fasta(df: pd.DataFrame, fasta_path: Path):
     with open(fasta_path, 'w') as handle:
@@ -36,10 +42,12 @@ def df2fasta(df: pd.DataFrame, fasta_path: Path):
                      df.iterrows()]
         SeqIO.write(sequences, handle, "fasta")
 
+
 def row2fasta(row, fasta_path: Path):
     with open(fasta_path, 'w') as handle:
         sequence = [SeqRecord(Seq(row['Sequence_1']), id=f"{row['Raw_ID1']}_{row['Sequence_1_ID']}")]
         SeqIO.write(sequence, handle, "fasta")
+
 
 class InfernalTbloutParser():
     """
@@ -48,6 +56,7 @@ class InfernalTbloutParser():
 
 
     """
+
     def __init__(self,
                  tblout_path: Union[str, Path],
                  ):
@@ -65,24 +74,25 @@ class InfernalTbloutParser():
             line = [l for l in line.split() if l]
 
             idx, target_name, t_accession, query_name, q_accession, clan_name, mdl, \
-            mdl_from, mdl_to, seq_from, seq_to, strand, trunc, pass_, gc, bias, \
-            score, e_value, inc, olp, anyidx, afrct1, afrct2, winidx, wfrct1, \
-            wfrct2 = line[:26]
+                mdl_from, mdl_to, seq_from, seq_to, strand, trunc, pass_, gc, bias, \
+                score, e_value, inc, olp, anyidx, afrct1, afrct2, winidx, wfrct1, \
+                wfrct2 = line[:26]
 
             description = ' '.join(line[26:])
 
             hit_info = {
-              'Id': query_name,
-              'Sequence_1_rfam_q_accession': q_accession,
-              'Sequence_1_family': target_name,
-              'Sequence_1_rfam_t_accession': t_accession,
-              'Sequence_1_rfam_description': description,
-              'Sequence_1_rfam_e_value': float(e_value),
+                'Id': query_name,
+                'Sequence_1_rfam_q_accession': q_accession,
+                'Sequence_1_family': target_name,
+                'Sequence_1_rfam_t_accession': t_accession,
+                'Sequence_1_rfam_description': description,
+                'Sequence_1_rfam_e_value': float(e_value),
             }
 
             family_info.append(hit_info)
 
         return pd.DataFrame(family_info)
+
 
 def download_rfam_cms(destination):
     subprocess.call(["wget", "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin"], cwd=destination)
@@ -92,40 +102,36 @@ def download_rfam_cms(destination):
     # you can do that here or later, better here
     # probably... jsut don't do it twice cause command fails
 
+
 # Only run once!
 # download_rfam_cms("family")
 
 
-def call_cmscan(clanin_path, cm_path, row):
-    fasta_path = f"family/{row['Id']}.fasta"
-    out_path = f"family/infernal_{row['Id']}.tbl"
+def call_cmscan(row):
+    fasta_path = os.path.join(WORKING_DIR, f"{row['Id']}.fasta")
+    out_path = os.path.join(WORKING_DIR, f"infernal_{row['Id']}.tbl")
     row2fasta(row, fasta_path)
-    subprocess.call(["/Users/lars/Downloads/infernal/src/cmscan",
+    subprocess.call([CM_SCAN_PATH,
                      "--rfam",  # set heuristic filters at Rfam-level (fast)
                      "--cut_ga",
                      "--nohmmonly",  # never run HMM-only mode, not even for models with 0 basepairs
                      "--oskip",  # w/'--fmt 2' and '--tblout', do not output lower scoring overlaps
                      "--tblout", out_path,
                      "--fmt", "2",
-                     "--clanin", clanin_path,
+                     "--clanin", CLANIN_PATH,
                      "--cpu", str(cpu_count()),
-                     cm_path,
+                     CM_PATH,
                      fasta_path], stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT)
-    # TODO: check trash files to be removed.
+                    stderr=subprocess.STDOUT)
     os.remove(fasta_path)
 
 
-def rfam_scan_single_sequence(row: pd.Series, family: str,
-                              cm_path: str = '../family/Rfam.cm',
-                              clanin_path: str = '../family/Rfam.clanin'):
+def rfam_scan_single_sequence(row: pd.Series, family: str):
     # define row
     row['Id'] = row['Raw_ID1'] + '_' + row['Sequence_1_ID']
     df = row.rename(None).to_frame()
-    cm_path = 'family/Rfam.cm'
-    clanin_path = 'family/Rfam.clanin'
-    out_path = f"family/infernal_{row['Id']}.tbl"
-    call_cmscan(clanin_path, cm_path, row)
+    out_path = os.path.join(WORKING_DIR, f"infernal_{row['Id']}.fasta")
+    call_cmscan(row)
 
     parser = InfernalTbloutParser(tblout_path=out_path)
     family_info = parser.parse()
@@ -145,32 +151,28 @@ def rfam_scan_single_sequence(row: pd.Series, family: str,
 
 
 def main():
-    # df = pd.read_pickle('data/inter_family_benchmark.plk.gz')
-    rna_sequences_path = '../../results/rpi2825/rna_sequences.parquet'
-    df = pd.read_parquet(rna_sequences_path, engine='pyarrow')
+    df = pd.read_parquet(RNA_SEQUENCES_PATH, engine='pyarrow')
     df['Id'] = df['Raw_ID1'].astype(str) + '_' + df['Sequence_1_ID'].astype(str)
 
-    cm_path = 'family/Rfam.cm'
-    clanin_path = 'family/Rfam.clanin'
     start = time()
-    args = [(clanin_path, cm_path, row) for _, row in df.iterrows()]
+    args = [row for _, row in df.iterrows()]
     pbar = tqdm(total=len(args))
     jobs = []
     with Pool() as pool:
         for arg_set in args:
-            jobs.append(pool.apply_async(call_cmscan, arg_set, callback=lambda x: pbar.update()))
+            jobs.append(pool.apply_async(call_cmscan, (arg_set,), callback=lambda x: pbar.update()))
         pool.close()
         pool.join()
-    results = [job.get() for job in jobs]
+    _ = [job.get() for job in jobs]
     print(f"Elapsed time with Pool: {time() - start}")
     # Both of the following commands use infernal
     # run cmpress if you run pipeline for first time... or run it after install of stuff....
     # subprocess.call(["cmpress", cm_path])
     family_info = pd.DataFrame()
-    for path in os.listdir("../family"):
+    for path in os.listdir(WORKING_DIR):
         if not path.endswith('.tbl'):
             continue
-        out_path = os.path.join("../family", path)
+        out_path = os.path.join(WORKING_DIR, path)
         parser = InfernalTbloutParser(tblout_path=out_path)
         temp_df = parser.parse()
         family_info = pd.concat([temp_df, family_info])
@@ -183,7 +185,7 @@ def main():
 
     # returns the corresponding sequences according to the family with the lowest e-value
     family_info = family_info.loc[family_info.groupby(['Id'])['Sequence_1_rfam_e_value'].idxmin()].sort_index()
-    family_path = rna_sequences_path[:-8] + "_families.parquet"
+    family_path = RNA_SEQUENCES_PATH[:-8] + "_families.parquet"
     family_info.to_parquet(family_path, engine='pyarrow')
     print(f"Sequences with families stored at: {family_path}")
 
