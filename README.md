@@ -24,3 +24,21 @@
     └── README.md               # This file :-)
 
 ## Getting started (reproduction of thesis results)
+### Preparation: Download files
+Copy files from cluster (KI-SLURM)
+```
+/data/datasets/RNAProteinInteractions/
+```
+
+Get RNAInter
+```
+wget http://www.rnainter.org/raidMedia/download/Download_data_RP.tar.gz
+tar -xf Download_data_RP.tar.gz
+rm Download_data_RP.tar.gz
+```
+
+### Step 1: Restrict sequence lengths
+follow instruction on [dataset/scripts/annotate/export_sequences.ipynb](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/export_sequences.ipynb) 
+to limit RNA & Protein sequence lengths. 
+Store sequences to parquet file (rna_sequences_short.parquet, protein_sequences_short.parquet)
+

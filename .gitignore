@@ -2,9 +2,6 @@
 __pycache__/
 dataset/scripts/annotate/family
 
-dataset/simple_protein_embeddings.npy
-dataset/simple_rna_embeddings.npy
-
 log/
 
 RNAProteinInterAct/
@@ -13,3 +10,10 @@ wandb/
 
 lightning_logs/
 .DS_Store
+
+/dataset/external_databases/Ensembl/Ensembl.parquet
+/dataset/external_databases/miRBase/miRNA.parquet
+/dataset/external_databases/NCBI/ncbi_proteins.parquet
+/dataset/external_databases/NCBI/ncbi_rna.parquet
+/dataset/external_databases/NONCODE/NONCODE.parquet
+/dataset/external_databases/UniProt/protein_uniprot.parquet
