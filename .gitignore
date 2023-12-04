@@ -1,0 +1,15 @@
+.idea/
+__pycache__/
+dataset/scripts/annotate/family
+
+dataset/simple_protein_embeddings.npy
+dataset/simple_rna_embeddings.npy
+
+log/
+
+RNAProteinInterAct/
+
+wandb/
+
+lightning_logs/
+.DS_Store

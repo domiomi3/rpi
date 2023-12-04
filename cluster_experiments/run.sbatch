@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH -p mlhiwidlc_gpu-rtx2080  # partition (queue)
+#SBATCH -t 1-00:00 # time (D-HH:MM)
+#SBATCH -o /work/dlclarge1/gernel-RNAProteinModel/log/%j.%x.%N.out # STDOUT  (the folder log has to be created prior to running or this won't work)
+#SBATCH -e /work/dlclarge1/gernel-RNAProteinModel/log/%j.%x.%N.err # STDERR  (the folder log has to be created prior to running or this won't work)
+#SBATCH -J RNAProteinInterAct  # sets the job name. If not specified, the file name will be used as job name
+#SBATCH --mail-type=END,FAIL # (recive mails about end and timeouts/crashes of your job)
+#SBATCH --chdir=/work/dlclarge1/gernel-RNAProteinModel/
+#SBATCH --mem=180G
+# Print some information about the job to STDOUT
+echo "Workingdir: $PWD";
+echo "Started at $(date)";
+echo "Running job $SLURM_JOB_NAME using $SLURM_JOB_CPUS_PER_NODE cpus per node with given JID $SLURM_JOB_ID on queue $SLURM_JOB_PARTITION";
+
+
+# Job to perform
+/work/dlclarge1/gernel-RNAProteinModel/venv/bin/python main.py \
+  --accelerator=gpu \
+  --max-time="00:22:00:00" \
+  --compiled \
+  --wandb \
+  --num-encoder-layers=1 \
+  --batch-size=128 \
+  --protein-embeddings-path=/work/dlcsmall2/gernel-sample-ws/protein_embeddings_float32.npy \
+  --rna-embeddings-path=/work/dlcsmall2/gernel-sample-ws/rna_embeddings_float32.npy \
+  --dataloader-type=PandasInMemory \
+  --num-dataloader-workers=8  # Print some Information about the end-time to STDOUT
+echo "DONE";
+echo "Finished at $(date)";

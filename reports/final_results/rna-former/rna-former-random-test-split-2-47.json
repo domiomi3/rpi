@@ -1,0 +1,10 @@
+[
+    {
+        "val_BinaryPrecision": 0.7722222208976746,
+        "val_BinaryRecall": 0.48180243372917175,
+        "val_BinaryF1Score": 0.5933831334114075,
+        "val_BinaryAccuracy": 0.7853118181228638,
+        "val_BinaryAUROC": 0.8533085584640503,
+        "valid_loss_epoch": 0.4355666935443878
+    }
+]
