@@ -31,7 +31,7 @@ from time import time
 CM_PATH = 'family/Rfam.cm'
 CLANIN_PATH = 'family/Rfam.clanin'
 
-CM_SCAN_PATH = "/Users/lars/Downloads/infernal/src/cmscan"
+CM_SCAN_PATH = "cmscan"
 RNA_SEQUENCES_PATH = '../../results/rna_sequences_short.parquet'
 WORKING_DIR = "family"
 Path(WORKING_DIR).mkdir(parents=True, exist_ok=True)

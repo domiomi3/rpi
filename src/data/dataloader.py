@@ -5,7 +5,6 @@ from time import time
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
-import sqlite3
 import os
 import click
 from torch.utils.data import random_split

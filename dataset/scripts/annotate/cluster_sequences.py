@@ -18,7 +18,7 @@ Requires https://github.com/weizhongli/cdhit
 pip install Biopython
 """
 
-CD_HIT_EST_PATH = "/Users/lars/Downloads/cd-hit/cd-hit-est"
+CD_HIT_EST_PATH = "cd-hit-est"
 
 RNA_SEQUENCES_PATH = "../../results/rna_sequences_short.parquet"
 PROTEIN_SEQUENCES_PATH = "../../results/protein_sequences_short.parquet"
