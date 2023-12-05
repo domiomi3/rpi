@@ -4,3 +4,4 @@ click
 numpy
 pandas
 pyarrow
+more_itertools

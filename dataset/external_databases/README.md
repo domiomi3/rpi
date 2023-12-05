@@ -5,6 +5,13 @@ wget http://www.rnainter.org/raidMedia/download/Download_data_RP.tar.gz
 tar -xf Download_data_RP.tar.gz
 rm Download_data_RP.tar.gz
 ```
+
+## RPI2825
+```
+wget https://universe.bits-pilani.ac.in/uploads/Goa_BIO/XRPI-datasets.rar
+unrar XRPI-datasets.rar
+```
+
 ## NONCODE
 ```
 cd external_databases/NONCODE

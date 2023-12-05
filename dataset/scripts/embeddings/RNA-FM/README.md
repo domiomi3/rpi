@@ -14,7 +14,7 @@ Store RNA sequences into dataframe following instructions on dataset.ipynb
 using script create_rna-fm_embeddings.py
 e.g. 
 ```
-python3 create_rna-fm_embeddings.py --enable-cuda --rna-path=unique_rnas.df
+python3 create_rna-fm_embeddings.py --enable-cuda=True --rna-path=unique_RNAs.parquet
 ```
 
 ## Convert Embeddings

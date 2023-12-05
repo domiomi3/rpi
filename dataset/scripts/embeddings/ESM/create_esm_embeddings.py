@@ -57,7 +57,6 @@ def main(enable_cuda, model_name, protein_path, max_task_id, task_id, repr_layer
         start = time()
         protein['Sequence_2'] = protein['Sequence_2'].upper()
         protein_sequence = [(protein['Sequence_2_ID_Unique'], protein['Sequence_2'])]
-        # protein_sequence = [protein]
 
         batch_labels, batch_strs, batch_tokens = batch_converter(protein_sequence)
         batch_lens = (batch_tokens != alphabet.padding_idx).sum(1)

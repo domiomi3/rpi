@@ -49,3 +49,41 @@ Store annotated sequences to parquet file (rna_sequences_cluster.parquet, protei
 ## Step 3: Annotate RNA sequences with RNA family information
 run script [dataset/scripts/annotate/get_RNA_family.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/get_RNA_family.py).
 Store annotated sequences to parquet file (rna_sequences_short_families.parquet)
+
+## Step 4: Creating Dataset for Training
+Combining all annotated information, creating negative interactions and splits using [dataset/scripts/dataset.ipynb](https://github.com/automl-private/RPI/blob/main/dataset/scripts/dataset.ipynb).
+
+## Step 5: Creating ESM-embeddings
+Follow instructions on [dataset/scripts/embeddings/ESM/README.md](https://github.com/automl-private/RPI/blob/main/dataset/scripts/embeddings/ESM/README.md)
+
+## Step 6: Creating RNA-FM embeddings
+Follow instructions on [dataset/scripts/embeddings/RNA-FM/README.md](https://github.com/automl-private/RPI/blob/main/dataset/scripts/embeddings/RNA-FM/README.md)
+
+## Step 7: Creating RNAFormer embeddings (optional)
+Follow instructions on [dataset/scripts/embeddings/RNAFormer/README.md](https://github.com/automl-private/RPI/blob/main/dataset/scripts/embeddings/RNAFormer/README.md)
+
+## Step 8: Run final evaluation (using RNA-FM & ESM embeddings)
+run script [experiments/train/train_rna-fm_random_split.py](https://github.com/automl-private/RPI/blob/main/experiments/train/train_rna-fm_random_split.py) with stated hyperparameters 
+```
+python train_rna-fm_random_split.py 
+--accelerator gpu 
+--devices 1 
+--wandb 
+--num-encoder-layers 1 
+--max-epochs 150 
+--num-dataloader-workers 8 
+--batch-size 8 
+--d-model 20 
+--n-head 2 
+--dim-feedforward 20 
+--dropout 0.21759085167606332 
+--weight-decay 0.00022637229697395497 
+--key-padding-mask 
+--lr-init 0.00001923730509654649 
+--dataloader-type PandasInMemory 
+--protein-embeddings-path dataset/results/protein_embeddings.npy 
+--rna-embeddings-path dataset/results/rna_embeddings.npy 
+--db-file-train dataset/results/final_train_set.parquet 
+--db-file-valid dataset/results/final_test_set_random.parquet 
+--seed=0
+```
