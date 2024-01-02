@@ -1,19 +1,32 @@
 .idea/
 __pycache__/
-dataset/scripts/annotate/family
 
 log/
-
-RNAProteinInterAct/
 
 wandb/
 
 lightning_logs/
 .DS_Store
 
-/dataset/external_databases/Ensembl/Ensembl.parquet
-/dataset/external_databases/miRBase/miRNA.parquet
-/dataset/external_databases/NCBI/ncbi_proteins.parquet
-/dataset/external_databases/NCBI/ncbi_rna.parquet
-/dataset/external_databases/NONCODE/NONCODE.parquet
-/dataset/external_databases/UniProt/protein_uniprot.parquet
+
+RNAProteinInteractions/Ensembl/Ensembl.parquet
+RNAProteinInteractions/miRBase/miRNA.parquet
+RNAProteinInteractions/NCBI/ncbi_proteins.parquet
+RNAProteinInteractions/NCBI/ncbi_rna.parquet
+RNAProteinInteractions/NONCODE/NONCODE.parquet
+RNAProteinInteractions/UniProt/protein_uniprot.parquet
+
+RNAProteinInterAct/
+
+dataset/scripts/annotate/dataset
+
+dataset/scripts/embeddings/ESM/results
+dataset/scripts/embeddings/ESM/protein_embeddings.npy
+
+dataset/scripts/embeddings/RNA-FM/results
+dataset/scripts/embeddings/RNA-FM/rna_embeddings.npy
+
+experiment_logs/
+cluster_logs/
+
+Download_data_RP.txt

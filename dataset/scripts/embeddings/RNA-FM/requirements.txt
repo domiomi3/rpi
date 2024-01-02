@@ -2,3 +2,5 @@ pandas
 click
 pyarrow
 more_itertools
+rna-fm
+ptflops

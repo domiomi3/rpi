@@ -28,12 +28,12 @@ from time import time
 
 # needs to be downloaded
 # e.g. download_rfam_cms function
-CM_PATH = 'family/Rfam.cm'
-CLANIN_PATH = 'family/Rfam.clanin'
+CM_PATH = '/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/family/Rfam.cm'
+CLANIN_PATH = '/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/family/Rfam.clanin'
 
-CM_SCAN_PATH = "cmscan"
-RNA_SEQUENCES_PATH = '../../results/rna_sequences_short.parquet'
-WORKING_DIR = "family"
+CM_SCAN_PATH = "/home/matusd/.conda/envs/rpi_3.8/bin/cmscan"
+RNA_SEQUENCES_PATH = '/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/results/rna_sequences_short.parquet'
+WORKING_DIR = "/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/family"
 Path(WORKING_DIR).mkdir(parents=True, exist_ok=True)
 
 def df2fasta(df: pd.DataFrame, fasta_path: Path):
@@ -98,7 +98,7 @@ def download_rfam_cms(destination):
     subprocess.call(["wget", "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin"], cwd=destination)
     subprocess.call(["wget", "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"], cwd=destination)
     subprocess.call(["gunzip", "Rfam.cm.gz"], cwd=destination)
-    subprocess.call(["/Users/lars/Downloads/infernal/src/cmpress", "Rfam.cm"], cwd=destination)
+    subprocess.call(["/home/matusd/.conda/envs/rpi/bin/cmpress", "Rfam.cm"], cwd=destination)
     # you can do that here or later, better here
     # probably... jsut don't do it twice cause command fails
 
@@ -177,7 +177,12 @@ def main():
         temp_df = parser.parse()
         family_info = pd.concat([temp_df, family_info])
         os.remove(out_path)
+    print("FAMILY INFO")
+    print(family_info.isnull())
+    print(family_info.head())
 
+
+    print(family_info.columns)
     family_info = family_info.merge(df, on='Id', how='outer')
 
     family_info['Sequence_1_rfam_e_value'] = family_info['Sequence_1_rfam_e_value'].fillna(1000.0)

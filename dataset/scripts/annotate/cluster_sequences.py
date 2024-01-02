@@ -18,15 +18,15 @@ Requires https://github.com/weizhongli/cdhit
 pip install Biopython
 """
 
-CD_HIT_EST_PATH = "cd-hit-est"
+CD_HIT_EST_PATH = "/work/dlclarge1/matusd-rpi/cd-hit/cd-hit-est"
 
-RNA_SEQUENCES_PATH = "../../results/rna_sequences_short.parquet"
-PROTEIN_SEQUENCES_PATH = "../../results/protein_sequences_short.parquet"
+RNA_SEQUENCES_PATH = "dataset/scripts/annotate/dataset/results/rna_sequences_short.parquet"
+PROTEIN_SEQUENCES_PATH = "/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/results/protein_sequences_short.parquet"
 
 rng = np.random.default_rng(seed=0)
-WORKING_DIR = '../shuffle'
+WORKING_DIR = '/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/shuffle'
 Path(WORKING_DIR).mkdir(parents=True, exist_ok=True)
-RESULTS_DIR = "../../results"
+RESULTS_DIR = "/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/results"
 
 
 def df2fasta(df: pd.DataFrame, fasta_path: Path, idx: str):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 from typing import Optional, Union, Callable
 from statistics import mean
@@ -48,6 +50,7 @@ class ModelWrapper(LightningModule):
 
     def training_step(self, batch, batch_idx):
         rna_embed, protein_embed, y, _ = batch
+        print(f"Labels: {sum(y)/len(y)}")
         y = y.float()
         y_hat = self.forward(rna_embed, protein_embed)
         y_hat = y_hat.reshape(y_hat.shape[0])

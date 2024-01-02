@@ -24,6 +24,10 @@
     └── README.md               # This file :-)
 
 ## Getting started (reproduction of thesis results)
+```
+conda create -n rpi python=3.8 pip
+pip install -r requirements.txt
+```
 ### Preparation: Download files
 Copy files from cluster (KI-SLURM)
 ```

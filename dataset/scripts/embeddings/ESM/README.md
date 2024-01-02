@@ -5,6 +5,7 @@ pip install -r requirements
 ```
 https://github.com/facebookresearch/esm#available-models-and-datasets- 
 
+# no need to when using pretrained model
 Download model esm2_t30_150M_UR50D
 ```
 mkdir models

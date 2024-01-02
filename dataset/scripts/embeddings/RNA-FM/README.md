@@ -1,10 +1,7 @@
 ## Install requirements
-According to
-https://github.com/ml4bio/RNA-FM
-And pip requirements
+rna-fm package already there
 ```
-conda activate RNA-RM
-pip install -r requirements.txt
+pip install -r requirements.txt 
 ```
 
 ## Store RNA sequences

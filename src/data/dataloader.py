@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import torch.utils.data
 import torch
@@ -22,9 +24,9 @@ class RNAInterActionsPandas(torch.utils.data.Dataset):
     Using this class on cluster is a bottleneck since the embeddings have to be loaded over network connection.
     """
     def __init__(self,
-                 rna_embeddings_path: str = "dataset/rna_embeddings",
-                 protein_embeddings_path: str = "dataset/protein_embeddings",
-                 db_file: str = "dataset/final_train_set.parquet",
+                 rna_embeddings_path: str,
+                 protein_embeddings_path: str,
+                 db_file: str,
                  ):
         self.db = pd.read_parquet(db_file, engine='pyarrow')
         self.db = self.db.assign(row_number=range(len(self.db)))
@@ -61,7 +63,7 @@ class RNAInterActionsPandasInMemory(torch.utils.data.Dataset):
     def __init__(self,
                  rna_embeddings: np.array,
                  protein_embeddings: np.array,
-                 db_file: str = "dataset/final_train_set.parquet"
+                 db_file: str
                  ):
         self.db = pd.read_parquet(db_file, engine='pyarrow')
         self.db = self.db.assign(row_number=range(len(self.db)))
@@ -109,12 +111,13 @@ class RNAInterActionsPandasInMemory(torch.utils.data.Dataset):
             ['Sequence_1_ID_Unique', 'Sequence_2_ID_Unique', 'Sequence_1_shuffle', 'Sequence_2_shuffle', 'row_number']]
         assert result_df.shape[0] == 1
         seq_1_ID_Unique, seq_2_ID_Unique, seq_1_shuffle, seq_2_shuffle, row_number = result_df.values.tolist()[0]
-
         # define interactions
         interacts = float(not (seq_1_shuffle or seq_2_shuffle))
         padded_seq_1_embed = self.rna_embeddings[seq_1_ID_Unique]
         padded_seq_2_embed = self.protein_embeddings[seq_2_ID_Unique]
-
+        # print(f"If interaction: {interacts}")
+        # print(f"Sequence 1 shuffle: {seq_1_shuffle}")
+        # print(f"Sequence 2 shuffle: {seq_2_shuffle}")
         return padded_seq_1_embed, padded_seq_2_embed, interacts, row_number
 
 

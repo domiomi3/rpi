@@ -1,11 +1,8 @@
 import os
 import click
 import pandas as pd
+import argparse
 
-
-@click.command()
-@click.option('--embedding-path')
-@click.option('--rna-path')
 def check_results(embedding_path: str, rna_path: str):
     result_files = [f for f in os.listdir(embedding_path) if os.path.isfile(os.path.join(embedding_path, f)) if f.endswith('.npy')]
     embeddings_df = pd.DataFrame([dict(
@@ -28,4 +25,10 @@ def check_results(embedding_path: str, rna_path: str):
 
 
 if __name__ == '__main__':
-    check_results()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--embedding_path', type=str, default="/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/embeddings/RNA-FM/results/", help='Path to folder with RNA embeddings')
+    parser.add_argument('--rna_path', type=str, default='/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/results/unique_RNAs.parquet', help='Path to RNA parquet file')
+
+    args = parser.parse_args()
+    check_results(args.embedding_path, args.rna_path)
