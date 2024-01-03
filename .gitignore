@@ -28,5 +28,6 @@ dataset/scripts/embeddings/RNA-FM/rna_embeddings.npy
 
 experiment_logs/
 cluster_logs/
+data/
 
 Download_data_RP.txt

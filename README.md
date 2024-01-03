@@ -29,7 +29,7 @@ conda create -n rpi python=3.8 pip
 pip install -r requirements.txt
 ```
 ### Preparation: Download files
-Copy files from cluster (KI-SLURM)
+Copy files from cluster (KI-SLURM, hidden dir) 
 ```
 /data/datasets/RNAProteinInteractions/
 ```
@@ -43,10 +43,13 @@ rm Download_data_RP.tar.gz
 
 ### Step 1: Restrict sequence lengths
 follow instruction on [dataset/scripts/annotate/export_sequences.ipynb](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/export_sequences.ipynb) 
-to limit RNA & Protein sequence lengths. 
-Store sequences to parquet file (rna_sequences_short.parquet, protein_sequences_short.parquet)
+to limit RNA & Protein sequence lengths. PROTEIN_LEN and RNA_LEN adjustable
+Store sequences to parquet file (rna_sequences_short.parquet, protein_sequences_short.parquet, unique_rna_sequences.pickle -> same as rna_short_sequences?)
 
 ## Step 2: Annotate sequences with cluster information
+cd-hit installation;
+conda install -c bioconda cd-hit as per [Installation](https://github.com/weizhongli/cdhit/wiki/2.-Installation)
+
 run script [dataset/scripts/annotate/cluster_sequences.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/cluster_sequences.py).
 Store annotated sequences to parquet file (rna_sequences_cluster.parquet, protein_sequences_clusters.parquet)
 
