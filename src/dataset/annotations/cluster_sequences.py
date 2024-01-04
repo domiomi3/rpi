@@ -1,35 +1,15 @@
 import argparse
 import os
 import subprocess
-import time
-
+import sys
 import pandas as pd
 
 from pathlib import Path
 from tqdm import tqdm
 
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-
-
-def df2fasta(df: pd.DataFrame, fasta_path: Path, idx: str):
-    """
-    The function constructs a SeqRecord object for each sequence in the DataFrame
-    and writes all SeqRecords to the specified FASTA file.
-
-    Args: 
-    - df (pd.DataFrame): DataFrame with sequences.
-    - fasta_path (Path): Path to the FASTA file.
-    - idx (str): Index of the "Sequence_X" column indicating typo of sequence 
-    (1 = protein, 2 = rna).
-    """
-    with open(fasta_path, 'w') as handle:
-        sequences = [SeqRecord(Seq(row[f'Sequence_{idx}']), id=f"{row[f'Raw_ID{idx}']}_{row[f'Sequence_{idx}_ID']}") for
-                     _, row in
-                     df.iterrows()]
-        SeqIO.write(sequences, handle, "fasta")
-
+src_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(src_dir))
+from utils import df2fasta
 
 def run_cd_hit_est(cd_hit_est_path, input_path, output_path, additional_args):
     """

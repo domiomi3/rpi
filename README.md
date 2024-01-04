@@ -51,9 +51,10 @@ cd-hit installation;
 conda install -c bioconda cd-hit as per [Installation](https://github.com/weizhongli/cdhit/wiki/2.-Installation)
 
 run script [dataset/scripts/annotate/cluster_sequences.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/cluster_sequences.py).
-Store annotated sequences to parquet file (rna_sequences_cluster.parquet, protein_sequences_clusters.parquet)
+Store annotated sequences to parquet file (rna_sequences_clusters.parquet, protein_sequences_clusters.parquet)
 
 ## Step 3: Annotate RNA sequences with RNA family information
+conda install -c bioconda infernal
 run script [dataset/scripts/annotate/get_RNA_family.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/get_RNA_family.py).
 Store annotated sequences to parquet file (rna_sequences_short_families.parquet)
 
