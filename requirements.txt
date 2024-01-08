@@ -24,4 +24,6 @@ pyensembl
 requests
 scikit-bio
 tables
-ushuffle
+
+fair-esm 
+submitit
