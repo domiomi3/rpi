@@ -3,8 +3,8 @@ from ConfigSpace import (ConfigurationSpace,
                          Float,
                          Constant)
 
-from src.models.model import RNAProteinInterActRNAFormer, ModelWrapper
-from src.data.dataloader import RNAInterActionsPandasInMemory
+from src.model import RNAProteinInterActRNAFormer, ModelWrapper
+from src.dataloader import RNAInterActionsPandasInMemory
 from lightning.pytorch.callbacks import LearningRateMonitor
 import torch
 

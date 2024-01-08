@@ -34,13 +34,6 @@ Copy files from cluster (KI-SLURM, hidden dir)
 /data/datasets/RNAProteinInteractions/
 ```
 
-Get RNAInter
-```
-wget http://www.rnainter.org/raidMedia/download/Download_data_RP.tar.gz
-tar -xf Download_data_RP.tar.gz
-rm Download_data_RP.tar.gz
-```
-
 ### Step 1: Restrict sequence lengths
 follow instruction on [dataset/scripts/annotate/export_sequences.ipynb](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/export_sequences.ipynb) 
 to limit RNA & Protein sequence lengths. PROTEIN_LEN and RNA_LEN adjustable
@@ -67,8 +60,6 @@ Follow instructions on [dataset/scripts/embeddings/ESM/README.md](https://github
 ## Step 6: Creating RNA-FM embeddings
 Follow instructions on [dataset/scripts/embeddings/RNA-FM/README.md](https://github.com/automl-private/RPI/blob/main/dataset/scripts/embeddings/RNA-FM/README.md)
 
-## Step 7: Creating RNAFormer embeddings (optional)
-Follow instructions on [dataset/scripts/embeddings/RNAFormer/README.md](https://github.com/automl-private/RPI/blob/main/dataset/scripts/embeddings/RNAFormer/README.md)
 
 ## Step 8: Run final evaluation (using RNA-FM & ESM embeddings)
 run script [experiments/train/train_rna-fm_random_split.py](https://github.com/automl-private/RPI/blob/main/experiments/train/train_rna-fm_random_split.py) with stated hyperparameters 

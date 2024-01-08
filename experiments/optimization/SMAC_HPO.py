@@ -5,8 +5,8 @@ from ConfigSpace import (ConfigurationSpace,
 
 import numpy as np
 
-from src.models.model import RNAProteinInterAct, ModelWrapper
-from src.data.dataloader import RNAInterActionsPandasInMemory
+from src.model import RNAProteinInterAct, ModelWrapper
+from src.dataloader import RNAInterActionsPandasInMemory
 from lightning.pytorch.callbacks import LearningRateMonitor
 import torch
 

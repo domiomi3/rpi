@@ -2,66 +2,24 @@ import torch
 import esm
 from time import time
 from statistics import mean
-import click
+
 import numpy
 import argparse
 import pandas as pd
-from more_itertools import divide
 
-"""
-This script helps to create ESM embeddings for proteins. 
-It can be run with a array batch job SLURM cluster. 
-e.g. pass SLURM_ARRAY_TASK_ID to --task-id
-and SLURM_ARRAY_TASK_MAX to --max-task-id
-This will distribute all protein sequences across different jobs.
-Recommended to use with pre-trained model: esm2_t30_150M_UR50D ==> --repr-layer=30
-(see https://github.com/facebookresearch/esm#available-models-and-datasets-) 
-"""
+src_dir = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(src_dir))
+from utils import divide_dataframe
 
-
-# @click.command()
-# @click.option('--enable-cuda', default=True)
-# @click.option('--model-name', default="dd")
-# @click.option('--protein-path', default="/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/results/unique_proteins.parquet")
-# @click.option('--repr-layer', default=30)
-# @click.option('--max-task-id', default=0)
-# @click.option('--task-id', default=0)
-# @click.option('--save-dir', default="results")
-# @click.option('--log-freq', default=1000)
-
-def divide_dataframe(df, max_task_id, task_id):
-    """
-    Divide a DataFrame into equal parts based on max_task_id and return the part specified by task_id.
-
-    :param df: pandas DataFrame to be divided.
-    :param max_task_id: The total number of parts to divide the DataFrame into.
-    :param task_id: The index of the part to return (0-indexed).
-    :return: The subset of the DataFrame corresponding to the task_id.
-    """
-    # Calculate the number of rows per task
-    rows_per_task = len(df) // max_task_id
-
-    # Calculate the start and end index for the slice
-    start_idx = task_id * rows_per_task
-    end_idx = start_idx + rows_per_task
-
-    # Adjust the end index for the last task to include any remaining rows
-    if task_id == max_task_id - 1:
-        end_idx = len(df)
-
-    # Return the subset of the DataFrame
-    return df.iloc[start_idx:end_idx].to_dict('records')
 
 #using GPU leads to OOM issues
-def main(enable_cuda=False, model_name="dfs", protein_path="/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/annotate/dataset/results/unique_proteins.parquet", repr_layer=30, max_task_id=0, task_id=0, save_dir="/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/embeddings/ESM/results", log_freq=1000):
+def main(save_dir, protein_path, enable_cuda, repr_layer, max_task_id, task_id):
     
     print(f"Running with task id {task_id} and max task id {max_task_id}")
 
     proteins_df = pd.read_parquet(protein_path, engine='pyarrow')
     # This line divides the dataframe into (max-task-id) parts and takes the (task-id)th element.
     data = divide_dataframe(proteins_df, max_task_id, task_id)
-    # data = proteins_df.iloc[
-    #     [list(c) for c in divide(max_task_id + 1, range(proteins_df.shape[0]))][task_id]].to_dict('records')
     print(f"Create embeddings for {len(data)} proteins out of {proteins_df.shape[0]} proteins from dataset {protein_path}")
     print(f"Model name: {model_name}")
     # check how much memory data occupies

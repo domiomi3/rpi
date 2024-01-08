@@ -3,9 +3,9 @@ from lightning import Trainer
 import torch
 from torch.utils.data import DataLoader
 
-from src.models.model import RNAProteinInterAct, ModelWrapper, RNAProteinInterActRNAFormer
+from src.model import RNAProteinInterAct, ModelWrapper, RNAProteinInterActRNAFormer
 import click
-from src.data.dataloader import RNAInterActionsPandasInMemory
+from src.dataloader import RNAInterActionsPandasInMemory
 from lightning.pytorch.callbacks import LearningRateMonitor
 import json
 import pathlib

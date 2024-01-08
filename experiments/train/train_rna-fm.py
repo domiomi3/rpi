@@ -1,9 +1,9 @@
 import lightning.pytorch.loggers
 from lightning import Trainer
 import torch
-from src.models.model import RNAProteinInterAct, ModelWrapper
+from src.model import RNAProteinInterAct, ModelWrapper
 import click
-from src.data.dataloader import get_dataloader
+from src.dataloader import get_dataloader
 from lightning.pytorch.callbacks import LearningRateMonitor
 
 """
