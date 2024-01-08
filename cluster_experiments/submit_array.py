@@ -19,7 +19,7 @@ def submit() -> None:
         import sys
         sys.path.append('/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/embeddings/RNA-FM')
         import create_rna_fm_embeddings 
-        return create_rna_fm_embeddings.main(task_id=args['task_id'], max_task_id=args['max_task_id'])
+        return create_rna_fm_embeddings.main(**args)
         # sys.path.append('/work/dlclarge1/matusd-rpi/RPI/dataset/scripts/embeddings/ESM')
         # import create_esm_embeddings 
         # return create_esm_embeddings.main(task_id=1, max_task_id=20)
@@ -27,12 +27,20 @@ def submit() -> None:
     logger.info("Submitting jobs...")
     # breakpoint()
 
+    save_dir = "/work/dlclarge1/matusd-rpi/RPI/data/embeddings/esm"
+    protein_path = "/work/dlclarge1/matusd-rpi/RPI/data/embeddings/unique_proteins.parquet"
+    enable_cuda = False
+    repr_layer = 30
     max_task_id = 20
     task_ids = list(range(0, max_task_id))
     jobs_to_submit = []
  
     for task_id in task_ids:
         submit_args_exec = {
+            "save_dir": save_dir,
+            "protein_path": protein_path,
+            "enable_cuda": enable_cuda,
+            "repr_layer": repr_layer,
             "task_id": task_id,
             "max_task_id": max_task_id,
         }
