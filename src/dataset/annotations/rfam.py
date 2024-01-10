@@ -2,16 +2,15 @@ import argparse
 import subprocess
 import sys
 import os
+import shutil
 
 import pandas as pd
 
-from typing import Union
 from pathlib import Path
 from multiprocessing import cpu_count
 from tqdm import tqdm
 from multiprocessing import Pool
 from time import time
-
 
 src_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(src_dir))
@@ -121,18 +120,21 @@ def parse_family_info(tblout_path):
     return pd.DataFrame(family_info)
 
 
-def assign_family_info(rna_sequences_path, rfam_dir, rfam_cm_path, 
+def assign_family_info(rna_path, rfam_dir, rfam_cm_path, 
                        rfam_clanin_path, cmscan_path):
     """
     Iterate over all available RNA sequences, scan them against the Rfam database
     and add family information to the DataFrame.
 
     Args:
-    - rna_sequences_path (str): Path to the RNA sequences file.
+    - rna_path (str): Path to the RNA sequences file.
     - rfam_dir (str): Path to the Rfam directory.
     - rfam_cm (str): Path to the Rfam.cm file.
     - rfam_clanin (str): Path to the Rfam.clanin file.
     - cmscan_path (str): Path to the cmscan executable.
+
+    Returns:
+    - None
     """
     
     # Create temporary subdir or storing .tbl files
@@ -175,31 +177,30 @@ def assign_family_info(rna_sequences_path, rfam_dir, rfam_cm_path,
             family_info_df = pd.concat([temp_df, family_info_df])
         else:
             skip_cnt += 1
-            print("No family found for: ", tbl_file.split('.')[0].split(':')[-1])
         os.remove(tbl_path)
 
-    print(f"Skipped {skip_cnt}/{files_cnt} sequences.")
-    print(f"Found families for {family_info_df.shape[0]}/{files_cnt} sequences.")
+    # Keep only entries with family information and curate the DataFrame
+    df = family_info_df.merge(df, on='Id', how='left')
+    print(f"Found families for {df.shape[0]}/{files_cnt} sequences.")
 
-    # Merge family information with the original DataFrame and curate
-    df = family_info_df.merge(df, on='Id', how='outer')
     df['Sequence_1_rfam_e_value'] = df['Sequence_1_rfam_e_value'].fillna(1000.0) # set e-value to 1000.0 if no family was found
-    df = df.fillna('unknown') # set family info to unknown if no family was found
     df = df.loc[df.groupby(['Id'])['Sequence_1_rfam_e_value'].idxmin()].sort_index() # keep only the best hit (lowest e-val) for each sequence
-
+    df.drop(['Id'], axis=1, inplace=True)
+    
+    print(f"Number of unique sequences: {df.shape[0]} sequences.")
     # Save DataFrame with family information
-    families_path = rna_sequences_path[:-8] + "_families.parquet"
+    families_path = rna_path[:-8] + "_families.parquet"
     df.to_parquet(families_path, engine='pyarrow')
     print(f"Sequences with families stored at: {families_path}")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Your script description.')
+    parser = argparse.ArgumentParser(description='Scaning available RNA sequences against rfam database.')
 
     parser.add_argument('--working_dir', type=str, default='/work/dlclarge1/matusd-rpi/RPI', help='Working directory path.')
     parser.add_argument('--results_dir', type=str, default="data/annotations", help='Results directory path.')
     parser.add_argument('--rfam_dir', type=str, default="data/rfam", help='Rfam directory path.')
-    parser.add_argument('--rna_sequences', type=str, default="rna_sequences_short.parquet", help='Path to RNA sequences file.')
+    parser.add_argument('--rna_short', type=str, default="rna_short.parquet", help='Path to RNA sequences file.')
     parser.add_argument('--rfam_cm', type=str, default="Rfam.cm", help='Path to protein sequences file.')
     parser.add_argument('--rfam_clanin', type=str, default="Rfam.clanin", help='Path to .clanin file.')
     parser.add_argument('--cmscan_path', type=str, default="/home/matusd/.conda/envs/rpi/bin/cmscan", help='Path to CMScan executable.')
@@ -211,7 +212,7 @@ if __name__ == '__main__':
     working_dir = args.working_dir
     results_dir = args.results_dir
     rfam_dir = args.rfam_dir
-    rna_sequences = args.rna_sequences
+    rna_short = args.rna_short
     rfam_cm = args.rfam_cm
     rfam_clanin = args.rfam_clanin
     cmscan_path = args.cmscan_path
@@ -221,11 +222,13 @@ if __name__ == '__main__':
     os.chdir(working_dir)
 
     # Curate paths
-    rna_path = os.path.join(results_dir, rna_sequences)
+    rna_path = os.path.join(results_dir, rna_short)
     rfam_cm_path = os.path.join(rfam_dir, rfam_cm)
     rfam_clanin_path = os.path.join(rfam_dir, rfam_clanin)
 
     check_and_download_rfam(rfam_dir, cmpress_path)
     assign_family_info(rna_path, rfam_dir, rfam_cm_path, rfam_clanin_path, 
                        cmscan_path)
-    
+   
+    # Remove rfam database
+    # shutil.rmtree(rfam_dir)

@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 
-src_dir = Path(__file__).resolve().parent.parent
+src_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(src_dir))
 from utils import df2fasta
 
@@ -20,6 +20,9 @@ def run_cd_hit_est(cd_hit_est_path, input_path, output_path, additional_args):
     - input_path (str): Path to the input FASTA file.
     - output_path (str): Path to the output file.
     - additional_args (list): List of additional arguments for CD-HIT-EST.
+
+    Returns:
+    - (bool) True if the CD-HIT-EST scan completed successfully, False otherwise.
     """
     command = [cd_hit_est_path, "-i", input_path, "-o", output_path] + additional_args
 
@@ -40,11 +43,16 @@ def cluster_sequences(sequence_type, results_dir, sequences_path, cd_hit_est_pat
     Cluster sequences (either protein or RNA) using CD-HIT.
 
     Args:
-    - sequence_type (str): Type of sequences ('protein' or 'rna').
+    - sequence_type (str): Type of sequences ('proteins' or 'rna').
     - results_dir (str): Directory to store results.
     - sequences_path (str): Path to the parquet file with sequences.
     - cd_hit_est_path (str): Path to the CD-HIT-EST executable.
+
+    Returns:
+    - None
     """
+    print(f"Clustering {sequence_type} sequences")
+
     # Create paths for intermediate files
     fasta_path = Path(results_dir, f'inter_{sequence_type}_cluster.fasta')
     ana_path = Path(os.path.join(results_dir, fasta_path.stem + '.ana'))
@@ -52,7 +60,7 @@ def cluster_sequences(sequence_type, results_dir, sequences_path, cd_hit_est_pat
 
     # Read sequences from the parquet file and convert them to FASTA format
     df = pd.read_parquet(os.path.join(results_dir, sequences_path), engine='pyarrow')
-    idx = '2' if sequence_type == 'protein' else '1'
+    idx = '2' if sequence_type == 'proteins' else '1'
     df2fasta(df, fasta_path, idx)
 
     # CD-HIT-EST arguments (remaining are default)):
@@ -70,54 +78,54 @@ def cluster_sequences(sequence_type, results_dir, sequences_path, cd_hit_est_pat
         "-c", "0.8", "-n", "5", "-r", "0", "-M", "0", "-l", "5", "-d", "0", 
         "-T", "0"
     ]
-    run_cd_hit_est(cd_hit_est_path, fasta_path, ana_path, cd_hit_args)
-
-    # Read the cluster information from the output file
-    clusters = []
-    with open(ana_clstr_path, 'r') as f:
-        lines = f.readlines()  # Read all lines at once
-
-    for line in tqdm(lines, desc="Processing clusters"):
-        line = line.rstrip()
-        if 'Cluster' in line:
-            current_cluster = line.split()[-1]
-        else:
-            s_id, score = line.split()[2][1:-3], line.split()[-1]
-            clusters.append((current_cluster, s_id, score))
-
-
-    # Create a DataFrame based on the cluster information (cluster ID, sequence ID, similarity score)
-    cluster_col = f'Sequence_{idx}_cluster'
-    clusters_df = pd.DataFrame(clusters, columns=[cluster_col, 'ID', f'{cluster_col}_sim'])
     
-    # Create a temporary ID column to identify sequences from clusters DataFrame
-    df['ID'] = df[f'Raw_ID{idx}'].astype(str) + '_' + df[f'Sequence_{idx}_ID'].astype(str)
-    df = df.merge(clusters_df, on='ID')
-    df.drop(['ID'], axis=1, inplace=True)
-    del clusters_df
+    if run_cd_hit_est(cd_hit_est_path, fasta_path, ana_path, cd_hit_args):
+        # Read the cluster information from the output file
+        clusters = []
+        with open(ana_clstr_path, 'r') as f:
+            lines = f.readlines()  # Read all lines at once
 
-    # Create new column indicating if sequence serves as a reference for the cluster
-    df[f'{cluster_col}_reference'] = df[f'{cluster_col}_sim'].apply(lambda x: x == '*')
+        for line in tqdm(lines, desc="Processing clusters"):
+            line = line.rstrip()
+            if 'Cluster' in line:
+                current_cluster = line.split()[-1]
+            else:
+                s_id, score = line.split()[2][1:-3], line.split()[-1]
+                clusters.append((current_cluster, s_id, score))
 
-    df.to_parquet(os.path.join(results_dir, f'{sequence_type}_sequences_clusters.parquet'), engine='pyarrow')
-    
-    # Remove intermediate files
-    os.remove(fasta_path)
-    os.remove(ana_path)
-    os.remove(ana_clstr_path)
+        # Create a DataFrame based on the cluster information (cluster ID, sequence ID, similarity score)
+        cluster_col = f'Sequence_{idx}_cluster'
+        clusters_df = pd.DataFrame(clusters, columns=[cluster_col, 'ID', f'{cluster_col}_sim'])
+        
+        print(f"Number of clustered {sequence_type} sequences: {clusters_df.shape[0]}/{df.shape[0]}.")
 
-    print(f"{sequence_type.capitalize()} sequences clustered and stored.")
+        # Create a temporary ID column to identify sequences from clusters DataFrame
+        df['ID'] = df[f'Raw_ID{idx}'].astype(str) + '_' + df[f'Sequence_{idx}_ID'].astype(str)
+        df = df.merge(clusters_df, on='ID')
+        df.drop(['ID'], axis=1, inplace=True)
+        del clusters_df
+
+        # Create new column indicating if sequence serves as a reference for the cluster
+        df[f'{cluster_col}_reference'] = df[f'{cluster_col}_sim'].apply(lambda x: x == '*')
+
+        df.to_parquet(os.path.join(results_dir, f'{sequence_type}_clusters.parquet'), engine='pyarrow')
+        
+        # Remove intermediate files
+        os.remove(fasta_path)
+        os.remove(ana_path)
+        os.remove(ana_clstr_path)
+
+        print(f"Clustered {sequence_type} sequences stored in {sequence_type}_short_clusters.parquet.")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Your script description.')
+    parser = argparse.ArgumentParser(description='Cluster RNA and protein sequences using CD-HIT.')
 
     parser.add_argument('--working_dir', type=str, default='/work/dlclarge1/matusd-rpi/RPI', help='Working directory path.')
     parser.add_argument('--results_dir', type=str, default="data/annotations", help='Results directory path.')
-    parser.add_argument('--rna_sequences_path', type=str, default="rna_sequences_short.parquet", help='Path to RNA sequences file.')
-    parser.add_argument('--protein_sequences_path', type=str, default="protein_sequences_short.parquet", help='Path to protein sequences file.')
+    parser.add_argument('--rna_sequences_path', type=str, default="rna_short.parquet", help='Path to RNA sequences file.')
+    parser.add_argument('--protein_sequences_path', type=str, default="proteins_short.parquet", help='Path to protein sequences file.')
     parser.add_argument('--cd_hit_est_path', type=str, default="/home/matusd/.conda/envs/rpi/bin/cd-hit-est", help='Path to CD-HIT-EST executable.')
-    parser.add_argument('--seed', type=int, default=0, help='Random seed.')
      
     args = parser.parse_args()
 
@@ -126,9 +134,8 @@ if __name__ == '__main__':
     rna_sequences_path = args.rna_sequences_path
     protein_sequences_path = args.protein_sequences_path
     cd_hit_est_path = args.cd_hit_est_path
-    seed = args.seed
 
     os.chdir(working_dir)
     
-    cluster_sequences('protein', args.results_dir, args.protein_sequences_path, args.cd_hit_est_path)
+    cluster_sequences('proteins', args.results_dir, args.protein_sequences_path, args.cd_hit_est_path)
     cluster_sequences('rna', args.results_dir, args.rna_sequences_path, args.cd_hit_est_path)
