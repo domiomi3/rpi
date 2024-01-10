@@ -1,5 +1,5 @@
 from torchinfo import summary
-from src.models.model import ModelWrapper, RNAProteinInterAct
+from src.model import ModelWrapper, RNAProteinInterAct
 
 """
 Script outputs a model summary with torchinfo. 

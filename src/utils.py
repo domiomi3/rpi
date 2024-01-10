@@ -1,6 +1,10 @@
+import os
+
 import pandas as pd
 import requests as r
 import concurrent.futures
+
+import numpy as np
 
 from random import choice
 from pathlib import Path
@@ -220,6 +224,7 @@ def divide_dataframe(df, max_task_id, task_id):
 
     # Return the subset of the DataFrame
     return df.iloc[start_idx:end_idx].to_dict('records')
+
 
 def call_fetch_function(func_name, chunk_size, ids, retries=3) -> pd.DataFrame:
     ids_chunks = list(chunked(ids, chunk_size))

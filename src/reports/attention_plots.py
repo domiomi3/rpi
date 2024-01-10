@@ -1,5 +1,5 @@
-from src.models.model import ModelWrapper, RNAProteinInterAct
-from src.data.dataloader import get_dataloader
+from src.model import ModelWrapper, RNAProteinInterAct
+from src.dataloader import get_dataloader
 import numpy as np
 import matplotlib.pyplot as plt
 
