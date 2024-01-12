@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def create_embeddings(df: pd.DataFrame, enc_size, alphabet: dict, idx: str):
+def create_embeddings(df, enc_size, alphabet, idx):
     """
     Create one-hot-encoding for provided sequences.
 
@@ -15,7 +15,7 @@ def create_embeddings(df: pd.DataFrame, enc_size, alphabet: dict, idx: str):
     - df (pd.DataFrame): DataFrame containing sequences.
     - enc_size (int): Length to which the sequences are padded or truncated.
     - alphabet (dict): Mapping from characters to integer indices.
-    - seq_key (str): Column name in DataFrame for the sequences.
+    - idx (str): 2 for protein, 1 for RNA.
 
     Returns:
     - (list, np.ndarray): List of encoded sequences and array of one-hot encoded sequences.
@@ -57,23 +57,20 @@ def collect_alphabet(df: pd.DataFrame, seq_key: str):
     print({letter: idx for idx, letter in enumerate(letters)})
 
 
-def main(args):
+def main(idx, emb_dir, seq_path, enc_size, alphabet):
+    # Load unique RNA sequences and create one-hot-encodings
+    sequence_type = 'RNA' if idx == '1' else 'protein'
+
     # Create output directory
-    one_hot_dir = os.path.join(args.emb_dir, "one_hot")
+    one_hot_dir = os.path.join(emb_dir, f"one_hot_{sequence_type}")
     if not os.path.exists(one_hot_dir):
         os.makedirs(one_hot_dir, exist_ok=True)
 
-    # Load unique RNA sequences and create one-hot-encodings
-    if args.rna_path:
-        unique_RNAs = pd.read_parquet(args.rna_path)
-        _, rna_embeddings = create_embeddings(unique_RNAs, args.rna_enc_size, args.rna_alphabet, '1')
-        np.save(one_hot_dir, "one_hot_RNA.npy", rna_embeddings) 
+    unique_seq = pd.read_parquet(seq_path)
+    _, one_hot_embeddings = create_embeddings(unique_seq, enc_size, alphabet, idx)
+    breakpoint()
+    np.save(one_hot_dir, f"one_hot_{sequence_type}.npy", one_hot_embeddings) 
 
-    # Load unique protein sequences and create one-hot-encodings
-    if args.protein_path:
-        unique_proteins = pd.read_parquet(args.protein_path)
-        _, protein_embeddings = create_embeddings(unique_proteins, args.protein_enc_size, args.protein_alphabet, '2')
-        np.save(os.path.join(one_hot_dir, "one_hot_proteins.npy"), protein_embeddings)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Create One-Hot Encodings for RNA and Protein Sequences")
@@ -86,6 +83,27 @@ if __name__ == '__main__':
     parser.add_argument('--protein_enc_size', type=int, default=1024, help='Encoding size for protein sequences')
     parser.add_argument('--rna_alphabet', type=dict, default={'C': 0, 'G': 1, 'A': 2, 'U': 3}, help='Alphabet for RNA sequences')
     parser.add_argument('--protein_alphabet', type=dict, default={'A': 0, 'C': 1, 'D': 2, 'E': 3, 'F': 4, 'G': 5, 'H': 6, 'I': 7, 'K': 8, 'L': 9, 'M': 10, 'N': 11, 'P': 12, 'Q': 13, 'R': 14, 'S': 15, 'T': 16, 'V': 17, 'W': 18, 'X': 19, 'Y': 20}, help='Alphabet for protein sequences')
+    parser.add_argument('--sequence_type', type=str, choices=['rna', 'protein'], required=True, help='Sequence type to be embedded (rna or protein)')
 
     args = parser.parse_args()
-    main(args)
+
+    working_dir = args.working_dir
+    emb_dir = args.emb_dir
+    rna_path = args.rna_path
+    protein_path = args.protein_path
+    rna_enc_size = args.rna_enc_size
+    protein_enc_size = args.protein_enc_size
+    rna_alphabet = args.rna_alphabet
+    protein_alphabet = args.protein_alphabet
+    sequence_type = args.sequence_type
+
+    os.chdir(working_dir)
+
+    if sequence_type == 'rna':
+        rna_path = os.path.join(emb_dir, rna_path)
+        main('1', emb_dir, rna_path, rna_enc_size, rna_alphabet)
+    elif sequence_type == 'protein':
+        protein_path = os.path.join(emb_dir, protein_path)
+        main('2', emb_dir, protein_path, protein_enc_size, protein_alphabet)
+    else:
+        raise ValueError(f"Invalid sequence type: {sequence_type}. Must be either 'rna' or 'protein'.")
