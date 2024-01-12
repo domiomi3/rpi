@@ -132,6 +132,9 @@ def merge_embeddings(emb_dir, model_type):
         padded_emb[:emb.shape[0], :] = emb
         embeddings.append(padded_emb)
 
+        os.remove(embedding_path)
+
+
     # Stack embeddings into a single array
     embeddings = np.stack(embeddings, axis=0)
 
