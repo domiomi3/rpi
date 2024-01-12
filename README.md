@@ -46,6 +46,47 @@ conda install -c bioconda cd-hit as per [Installation](https://github.com/weizho
 run script [dataset/scripts/annotate/cluster_sequences.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/cluster_sequences.py).
 Store annotated sequences to parquet file (rna_sequences_clusters.parquet, protein_sequences_clusters.parquet)
 
+## Step 3 Pfam
+every time we run pfam scan, we need to redownload all files AND extract binaries because they get removed after each scan (weird, need to look into it)
+export PATH=/work/dlclarge1/matusd-rpi/hmmer3:$PATH
+export PATH=/work/dlclarge1/matusd-rpi/bin:$PATH
+
+export PERL5LIB=/work/dlclarge1/matusd-rpi/RPI/data/pfam/PfamScan:$PERL5LIB
+export PERL5LIB=/work/dlclarge1/matusd-rpi/lib/perl5:$PERL5LIB
+
+
+those not needed??
+write :use lib "data/pfam/PfamScan/Bio/Pfam/Scan/PfamScan";
+in pfam_scan.pl after comments
+
+cpan
+cpan Moose
+
+if it fails due to permissions error in /usr/local/bin
+
+update env vars
+
+run cpan Moose
+sometimes because of changing install path to local dir, dpeendencies are not handled 
+then install them manually like this
+
+cpan CPAN::Meta::Check etc
+alternatively, check if cpan has correct drectives
+enter
+o conf makepl_arg INSTALL_BASE=/work/dlclarge1/matusd-rpi/
+o conf mbuildpl_arg --install_base /work/dlclarge1/matusd-rpi/
+o conf commit
+
+and reattempt installation
+
+install bioperl
+cpan Bio::Perl
+
+export path
+
+
+change perl path in the pfam_scan.pl
+
 ## Step 3: Annotate RNA sequences with RNA family information
 conda install -c bioconda infernal
 run script [dataset/scripts/annotate/get_RNA_family.py](https://github.com/automl-private/RPI/blob/main/dataset/scripts/annotate/get_RNA_family.py).

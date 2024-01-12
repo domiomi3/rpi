@@ -56,7 +56,7 @@ def call_cmscan(family_dir, rfam_cm_path, rfam_clanin_path, cmscan_path, row):
     - row (pd.Series): DataFrame row with sequence information.
     
     Returns:
-    - str: Path to the output file.
+    - None.
     """
     idx = 1 # RNA sequence
     fasta_path = os.path.join(family_dir, f"{row['Id']}.fasta")
