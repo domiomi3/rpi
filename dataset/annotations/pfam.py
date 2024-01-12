@@ -146,7 +146,7 @@ def assign_clan_info(protein_path, pfam_dir, pfam_scan_path):
     files_cnt = len(os.listdir(pfam_results_dir))
 
     # breakpoint()
-    for tbl_file in tqdm(os.listdir(pfam_results_dir), desc="Parsing pfam info"):
+    for tbl_file in tqdm(os.listdir(pfam_results_dir), total=files_cnt, desc="Parsing pfam info"):
         tbl_path = os.path.join(pfam_results_dir, tbl_file)
         temp_df = parse_tbl_file(tbl_path)
         # breakpoint()

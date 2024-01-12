@@ -101,6 +101,10 @@ Follow instructions on [dataset/scripts/embeddings/ESM/README.md](https://github
 ## Step 6: Creating RNA-FM embeddings
 Follow instructions on [dataset/scripts/embeddings/RNA-FM/README.md](https://github.com/automl-private/RPI/blob/main/dataset/scripts/embeddings/RNA-FM/README.md)
 
+## RPI dataset
+Download RPI2825 dataset from here: https://universe.bits-pilani.ac.in/goa/aduri/xRPI (data sets used in validating xRPI)
+
+And save the RPI2825.csv in the data/rpi2825 folder
 
 ## Step 8: Run final evaluation (using RNA-FM & ESM embeddings)
 run script [experiments/train/train_rna-fm_random_split.py](https://github.com/automl-private/RPI/blob/main/experiments/train/train_rna-fm_random_split.py) with stated hyperparameters 

@@ -109,11 +109,7 @@ def parse_family_info(tblout_path):
 
         hit_info = {
             'Id': query_name,
-            'Sequence_1_rfam_q_accession': q_accession,
             'Sequence_1_family': target_name,
-            'Sequence_1_rfam_t_accession': t_accession,
-            'Sequence_1_rfam_description': description,
-            'Sequence_1_rfam_e_value': float(e_value),
         }
         family_info.append(hit_info)
 
@@ -170,7 +166,7 @@ def assign_family_info(rna_path, rfam_dir, rfam_cm_path,
     skip_cnt = 0
     files_cnt = len(os.listdir(infernal_dir))
 
-    for tbl_file in tqdm(os.listdir(infernal_dir), desc="Parsing family info"):
+    for tbl_file in tqdm(os.listdir(infernal_dir), total=files_cnt, desc="Parsing family info"):
         tbl_path = os.path.join(infernal_dir, tbl_file)
         temp_df = parse_family_info(tbl_path)
         if temp_df.shape[0] > 0:

@@ -66,7 +66,7 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
 
     timings = []
 
-    for _, row in tqdm(enumerate(data_batch)):
+    for _, row in tqdm(enumerate(data_batch), total=data_batch.shape[0], desc="Embedding sequences"):
         start = time()
 
         sequence_id = row[f'Sequence_{idx}_ID']
@@ -126,7 +126,7 @@ def merge_embeddings(emb_dir, model_type):
     # file_paths = sorted(file_paths, key=lambda x: int(os.path.basename(x).split('.')[0]))
 
     embeddings = []
-    for embedding_path in tqdm(file_paths, desc="Merging embeddings"):
+    for embedding_path in tqdm(file_paths, total=len(file_paths), desc="Merging embeddings"):
         emb = np.load(embedding_path)
         padded_emb = np.zeros((1024, 640))
         padded_emb[:emb.shape[0], :] = emb

@@ -85,7 +85,7 @@ def cluster_sequences(sequence_type, results_dir, sequences_path, cd_hit_est_pat
         with open(ana_clstr_path, 'r') as f:
             lines = f.readlines()  # Read all lines at once
 
-        for line in tqdm(lines, desc="Processing clusters"):
+        for line in tqdm(lines, total=len(lines), desc="Processing clusters"):
             line = line.rstrip()
             if 'Cluster' in line:
                 current_cluster = line.split()[-1]
