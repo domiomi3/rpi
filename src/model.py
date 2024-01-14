@@ -1,26 +1,17 @@
 from __future__ import annotations
 
 import copy
+
+import torch
+
 from typing import Optional, Union, Callable
 from statistics import mean
-import torch
 from torch import Tensor, optim
-from torch.nn import functional as F
-from torch.nn import Module
-from torch.nn import MultiheadAttention
-
-from torch.nn import ModuleList
+from torch.nn import functional as F, Module, MultiheadAttention, ModuleList, Linear, LayerNorm, Conv1d, Dropout
 from torch.nn.init import xavier_uniform_
-from torch.nn import Dropout
-from torch.nn import Linear
-from torch.nn import LayerNorm
-from torch.nn import Conv1d, Conv2d
-from lightning import LightningModule
-from lightning import seed_everything
-
+from lightning import LightningModule, seed_everything
 from torchmetrics import MetricCollection
-from torchmetrics.classification import BinaryPrecision, BinaryRecall, \
-    BinaryF1Score, BinaryAccuracy, BinaryAUROC
+from torchmetrics.classification import BinaryPrecision, BinaryRecall, BinaryF1Score, BinaryAccuracy, BinaryAUROC
 
 
 class ModelWrapper(LightningModule):
@@ -50,7 +41,6 @@ class ModelWrapper(LightningModule):
 
     def training_step(self, batch, batch_idx):
         rna_embed, protein_embed, y, _ = batch
-        print(f"Labels: {sum(y)/len(y)}")
         y = y.float()
         y_hat = self.forward(rna_embed, protein_embed)
         y_hat = y_hat.reshape(y_hat.shape[0])
@@ -92,20 +82,6 @@ class ModelWrapper(LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
         return optimizer
-        # Alternatives to define scheduler
-        # sch = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        #    optimizer, T_0=5
-        # )
-
-        # learning rate scheduler
-        # return {
-        #    "optimizer": optimizer,
-        #    "lr_scheduler": {
-        #       "scheduler": sch,
-        #        "name": "scheduler",
-        #
-        #    }
-        # }
 
     def _shared_eval(self, batch):
         protein_embed, rna_embed, y = batch
@@ -120,7 +96,7 @@ class ModelWrapper(LightningModule):
 
 class RNAProteinInterAct(Module):
     r"""
-    Code heavily inspired copied from https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoder.html
+    Code heavily inspired from https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoder.html
     Args:
         d_model: the number of expected features in the encoder/decoder inputs (default=512).
         nhead: the number of heads in the multiheadattention models (default=8).

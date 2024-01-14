@@ -17,14 +17,16 @@ def submit() -> None:
  
     def job_function(args):
         import sys
+
         sys.path.append('/work/dlclarge1/matusd-rpi/RPI/dataset/embeddings')
         import esm_rna_fm 
+
         return esm_rna_fm.create_embeddings(**args)
  
     logger.info("Submitting jobs...")
 
     emb_dir = "/work/dlclarge1/matusd-rpi/RPI/data/embeddings/"
-    protein_path = "/work/dlclarge1/matusd-rpi/RPI/data/embeddings/unique_proteins.parquet"
+    data_path = "/work/dlclarge1/matusd-rpi/RPI/data/embeddings/unique_proteins.parquet"
     model_type = "esm2"
     enable_cuda = False
     repr_layer = 30
@@ -35,7 +37,7 @@ def submit() -> None:
     for task_id in task_ids:
         submit_args_exec = {
             "emb_dir": emb_dir,
-            "protein_path": protein_path,
+            "data_path": data_path,
             "model_type": model_type,
             "enable_cuda": enable_cuda,
             "repr_layer": repr_layer,

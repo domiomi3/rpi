@@ -211,6 +211,10 @@ def divide_dataframe(df, max_task_id, task_id):
     :param task_id: The index of the part to return (0-indexed).
     :return: The subset of the DataFrame corresponding to the task_id.
     """
+    # If max_task_id is 1, return the entire DataFrame
+    if max_task_id == 1:
+        return df.to_dict('records')
+    
     # Calculate the number of rows per task
     rows_per_task = len(df) // max_task_id
 

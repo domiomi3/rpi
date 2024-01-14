@@ -66,7 +66,7 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
 
     timings = []
 
-    for _, row in tqdm(enumerate(data_batch), total=data_batch.shape[0], desc="Embedding sequences"):
+    for _, row in tqdm(enumerate(data_batch), total=len(data_batch), desc="Embedding sequences"):
         start = time()
 
         sequence_id = row[f'Sequence_{idx}_ID']
@@ -123,16 +123,17 @@ def merge_embeddings(emb_dir, model_type):
 
     # Get all .npy files from the directory
     file_paths = [os.path.join(embedding_folder, f) for f in os.listdir(embedding_folder) if f.endswith('.npy')]
-    # file_paths = sorted(file_paths, key=lambda x: int(os.path.basename(x).split('.')[0]))
 
     embeddings = []
+
+    # Pad embeddings to the same length
     for embedding_path in tqdm(file_paths, total=len(file_paths), desc="Merging embeddings"):
         emb = np.load(embedding_path)
         padded_emb = np.zeros((1024, 640))
         padded_emb[:emb.shape[0], :] = emb
         embeddings.append(padded_emb)
 
-        os.remove(embedding_path)
+        # os.remove(embedding_path)
 
 
     # Stack embeddings into a single array
@@ -143,7 +144,7 @@ def merge_embeddings(emb_dir, model_type):
     print(f"Embeddings shape: {embeddings.shape}")
 
     # Save the merged embeddings
-    merged_embeddings_path = os.path.join(emb_dir, f"{sequence_type}_embeddings.npy")
+    merged_embeddings_path = os.path.join(emb_dir, f"{sequence_type.lower()}_embeddings.npy")
     np.save(merged_embeddings_path, embeddings)
     print(f"Merged embeddings saved to {merged_embeddings_path}")
 
@@ -183,10 +184,12 @@ if __name__ == '__main__':
     if args.model_type == 'rna_fm':
         repr_layer = 12
         save_dir = os.path.join(emb_dir, "rna_fm")
-        create_embeddings(emb_dir, rna_path, model_type, enable_cuda, repr_layer, max_task_id, task_id)
+        # create_embeddings(emb_dir, rna_path, model_type, enable_cuda, repr_layer, max_task_id, task_id)
         merge_embeddings(emb_dir, model_type)
     elif args.model_type == 'esm2':
         repr_layer = 30
         save_dir = os.path.join(emb_dir, "esm")
-        create_embeddings(emb_dir, protein_path, model_type, enable_cuda, repr_layer, max_task_id, task_id)
+        # create_embeddings(emb_dir, protein_path, model_type, enable_cuda, repr_layer, max_task_id, task_id)
         merge_embeddings(emb_dir, model_type)
+    else:
+        raise ValueError("Invalid model type. Choose 'rna_fm' or 'esm2'.")

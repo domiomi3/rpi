@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import numpy as np
-import torch.utils.data
-import torch
-from time import time
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-import pandas as pd
+import argparse
 import os
-import click
-from torch.utils.data import random_split
+import torch
 
+import numpy as np
+import pandas as pd
+
+from time import time
+from torch.utils.data import DataLoader, random_split, Dataset
+from tqdm import tqdm
 """
 Contains several dataloaders:
     - for ablation cluster_experiments
@@ -18,7 +17,7 @@ Contains several dataloaders:
 """
 
 
-class RNAInterActionsPandas(torch.utils.data.Dataset):
+class RNAInterActionsPandas(Dataset):
     """
     Loads Pandas Dataframe and reads embeddings from storage when needed.
     Using this class on cluster is a bottleneck since the embeddings have to be loaded over network connection.
@@ -29,6 +28,7 @@ class RNAInterActionsPandas(torch.utils.data.Dataset):
                  db_file: str,
                  ):
         self.db = pd.read_parquet(db_file, engine='pyarrow')
+        # Create row number column
         self.db = self.db.assign(row_number=range(len(self.db)))
         self.protein_embeddings_path = protein_embeddings_path
         self.rna_embeddings_path = rna_embeddings_path
@@ -42,19 +42,19 @@ class RNAInterActionsPandas(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         result_df = self.db[self.db['row_number'] == index][
-            ['Sequence_1_ID_Unique', 'Sequence_2_ID_Unique', 'Sequence_1_shuffle', 'Sequence_2_shuffle', 'RNAInterID']]
+            ['Sequence_1_ID', 'Sequence_2_ID', 'interaction', 'RNAInterID']]
         assert result_df.shape[0] == 1
-        seq_1_ID_Unique, seq_2_ID_Unique, seq_1_shuffle, seq_2_shuffle, rna_inter_id = result_df.values.tolist()[0]
+        seq_1_ID, seq_2_ID, interaction, rna_inter_id = result_df.values.tolist()[0]
 
         # open embeddings
-        seq_1_embed_path = os.path.join(self.rna_embeddings_path, f"{seq_1_ID_Unique}.npy")
-        seq_2_embed_path = os.path.join(self.protein_embeddings_path, f"{seq_2_ID_Unique}.npy")
-        interacts = float(not (seq_1_shuffle or seq_2_shuffle))
+        seq_1_embed_path = os.path.join(self.rna_embeddings_path, f"{seq_1_ID}.npy")
+        seq_2_embed_path = os.path.join(self.protein_embeddings_path, f"{seq_2_ID}.npy")
+        interacts = float(interaction)
         seq_1_embed, seq_2_embed = _load_and_pad_embeddings(seq_1_embed_path, seq_2_embed_path)
         return seq_1_embed, seq_2_embed, interacts, rna_inter_id
 
 
-class RNAInterActionsPandasInMemory(torch.utils.data.Dataset):
+class RNAInterActionsPandasInMemory(Dataset):
     """
     Loads Pandas Dataframe and reads embeddings from storage when needed.
     Recommended for using on cluster. Be aware that its usage needs a lot of system memory (RAM) since all embeddings
@@ -96,8 +96,8 @@ class RNAInterActionsPandasInMemory(torch.utils.data.Dataset):
 
     @staticmethod
     def pre_load_embeddings(
-            rna_embeddings_path: str = "dataset/rna_embeddings.npy",
-            protein_embeddings_path: str = "dataset/protein_embeddings.npy", ):
+            rna_embeddings_path: str = "data/embeddings/rna_embeddings.npy",
+            protein_embeddings_path: str = "data/embeddings/protein_embeddings.npy", ):
         return (RNAInterActionsPandasInMemory.pre_load_rna_embeddings(rna_embeddings_path),
                 RNAInterActionsPandasInMemory.pre_load_protein_embeddings(protein_embeddings_path))
 
@@ -108,16 +108,12 @@ class RNAInterActionsPandasInMemory(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         result_df = self.db[self.db['row_number'] == index][
-            ['Sequence_1_ID_Unique', 'Sequence_2_ID_Unique', 'Sequence_1_shuffle', 'Sequence_2_shuffle', 'row_number']]
+            ['Sequence_1_ID', 'Sequence_2_ID', 'interaction', 'row_number']]
         assert result_df.shape[0] == 1
-        seq_1_ID_Unique, seq_2_ID_Unique, seq_1_shuffle, seq_2_shuffle, row_number = result_df.values.tolist()[0]
-        # define interactions
-        interacts = float(not (seq_1_shuffle or seq_2_shuffle))
-        padded_seq_1_embed = self.rna_embeddings[seq_1_ID_Unique]
-        padded_seq_2_embed = self.protein_embeddings[seq_2_ID_Unique]
-        # print(f"If interaction: {interacts}")
-        # print(f"Sequence 1 shuffle: {seq_1_shuffle}")
-        # print(f"Sequence 2 shuffle: {seq_2_shuffle}")
+        seq_1_ID, seq_2_ID, interaction, row_number = result_df.values.tolist()[0]
+        interacts = float(interaction)
+        padded_seq_1_embed = self.rna_embeddings[seq_1_ID]
+        padded_seq_2_embed = self.protein_embeddings[seq_2_ID]
         return padded_seq_1_embed, padded_seq_2_embed, interacts, row_number
 
 
@@ -253,39 +249,32 @@ class RNAInterActionsPIMAllRandom(RNAInterActionsPandasInMemory):
 def _load_and_pad_embeddings(seq_1_embed_path: str, seq_2_embed_path: str):
     seq_1_embed = np.load(seq_1_embed_path)
     seq_2_embed = np.load(seq_2_embed_path)
-    # define interactions
-    # pad embeddings with 0 :)
 
-    padded_seq_1_embed = None
-
-    # in case that RNA input embedding has
+    # different dims case
     if seq_1_embed.ndim == 2:
-        padded_seq_1_embed = np.zeros((150, 640))
+        padded_seq_1_embed = np.zeros((1024, 640))
         padded_seq_1_embed[:seq_1_embed.shape[0], :] = seq_1_embed
 
     if seq_1_embed.ndim == 3:
-        padded_seq_1_embed = np.zeros((150, 150, 256))
+        padded_seq_1_embed = np.zeros((1024, 1024, 256))
         padded_seq_1_embed[:seq_1_embed.shape[0], :seq_1_embed.shape[1], :] = seq_1_embed
-
     assert padded_seq_1_embed is not None
+
     padded_seq_2_embed = np.zeros((1024, 640))
     padded_seq_2_embed[:seq_2_embed.shape[0], :] = seq_2_embed
+    assert padded_seq_2_embed is not None
+    
     return padded_seq_1_embed, padded_seq_2_embed
 
 
 def get_random_dataloader(loader_type: str,
                           db_file_train: str,
-                          db_file_valid: str,
                           rna_embeddings_path: str,
                           protein_embeddings_path: str,
                           **kwargs
                           ):
     assert loader_type in ['SQLite', 'Pandas', 'PandasInMemory',
                            ], 'Invalid loader_type specified.'
-    if loader_type == 'SQLite':
-        raise NotImplementedError()
-    train_set = None
-    valid_set = None
     if loader_type == 'SQLite':
         raise NotImplementedError()
     elif loader_type == 'Pandas':
@@ -301,13 +290,12 @@ def get_random_dataloader(loader_type: str,
             rna_embeddings_path,
             protein_embeddings_path
         )
-        if loader_type == 'PandasInMemory':
-            dataset = RNAInterActionsPandasInMemory(
-                rna_embeddings,
-                protein_embeddings,
-                db_file_train,
-            )
-            train_set, valid_set = random_split(dataset, [0.85, 0.15])
+        dataset = RNAInterActionsPandasInMemory(
+            rna_embeddings,
+            protein_embeddings,
+            db_file_train,
+        )
+        train_set, valid_set = random_split(dataset, [0.85, 0.15])
 
     assert train_set is not None
     assert valid_set is not None
@@ -325,11 +313,6 @@ def get_dataloader(loader_type: str,
                            "PIMAllRandom", "PIMRNARandom", "PIMProteinRandom",
                            "PIMAllZero", "PIMRNAZero", "PIMProteinZero",
                            "PIMAllProtein", "PIMAllRNA"], 'Invalid loader_type specified.'
-    if loader_type == 'SQLite':
-        raise NotImplementedError()
-        # assert dataset in ['train', 'valid', 'test'], 'Invalid dataset specified.'
-    train_set = None
-    valid_set = None
     if loader_type == 'SQLite':
         raise NotImplementedError()
     elif loader_type == 'Pandas':
@@ -413,43 +396,39 @@ def get_dataloader(loader_type: str,
     return DataLoader(train_set, shuffle=True, **kwargs), DataLoader(valid_set, shuffle=False, **kwargs)
 
 
-@click.command()
-@click.option("--batch-size", default=64)
-@click.option("--amount", default=20)
-@click.option("--num-workers", default=1)
-@click.option("--rna-embeddings-path", default="dataset/rna_embeddings.npy")
-@click.option("--protein-embeddings-path", default="dataset/protein_embeddings.npy")
-@click.option("--db-file-train", default="dataset/final_train_set.parquet")
-@click.option("--db-file-valid", default="dataset/final_valid_set.parquet")
-@click.option("--dataloader-type", default=None, type=str)
-def main(batch_size: int,
-         amount: int,
-         num_workers: int,
-         rna_embeddings_path: str,
-         protein_embeddings_path: str,
-         db_file_train: str,
-         db_file_valid: str,
-         dataloader_type: str):
-    train_dataloader, valid_dataloader = get_dataloader(dataloader_type,
-                                                        db_file_train,
-                                                        db_file_valid,
-                                                        rna_embeddings_path,
-                                                        protein_embeddings_path,
-                                                        num_workers=num_workers,
-                                                        batch_size=batch_size
-                                                        )
-    total_start = time()
-    for idx, x in tqdm(enumerate(iter(train_dataloader))):
-        if idx == amount - 1:
-            break
-    print(f"Total time: {time() - total_start} for train_dataloader providing batches.")
+def main(args):
+    train_dataloader, valid_dataloader = get_dataloader(args.dataloader_type,
+                                                        args.db_file_train,
+                                                        args.db_file_valid,
+                                                        args.rna_embeddings_path,
+                                                        args.protein_embeddings_path,
+                                                        num_workers=args.num_workers,
+                                                        batch_size=args.batch_size)
 
-    total_start = time()
-    for idx, x in tqdm(enumerate(iter(valid_dataloader))):
-        if idx == amount - 1:
+    total_start = time.time()
+    for idx, x in tqdm(enumerate(iter(train_dataloader))):
+        if idx == args.amount - 1:
             break
-    print(f"Total time: {time() - total_start} for valid_dataloader providing batches.")
+    print(f"Total time: {time.time() - total_start} for train_dataloader providing batches.")
+
+    total_start = time.time()
+    for idx, x in tqdm(enumerate(iter(valid_dataloader))):
+        if idx == args.amount - 1:
+            break
+    print(f"Total time: {time.time() - total_start} for valid_dataloader providing batches.")
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--amount", type=int, default=20)
+    parser.add_argument("--num-workers", type=int, default=1)
+    parser.add_argument("--rna-embeddings-path", type=str, default="dataset/rna_embeddings.npy")
+    parser.add_argument("--protein-embeddings-path", type=str, default="dataset/protein_embeddings.npy")
+    parser.add_argument("--db-file-train", type=str, default="dataset/final_train_set.parquet")
+    parser.add_argument("--db-file-valid", type=str, default="dataset/final_valid_set.parquet")
+    parser.add_argument("--dataloader-type", type=str, default=None)
+
+    args = parser.parse_args()
+    main(args)
