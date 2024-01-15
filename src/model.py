@@ -1,17 +1,24 @@
-from __future__ import annotations
-
 import copy
-
-import torch
-
 from typing import Optional, Union, Callable
 from statistics import mean
+import torch
 from torch import Tensor, optim
-from torch.nn import functional as F, Module, MultiheadAttention, ModuleList, Linear, LayerNorm, Conv1d, Dropout
+from torch.nn import functional as F
+from torch.nn import Module
+from torch.nn import MultiheadAttention
+
+from torch.nn import ModuleList
 from torch.nn.init import xavier_uniform_
-from lightning import LightningModule, seed_everything
+from torch.nn import Dropout
+from torch.nn import Linear
+from torch.nn import LayerNorm
+from torch.nn import Conv1d, Conv2d
+from lightning import LightningModule
+from lightning import seed_everything
+
 from torchmetrics import MetricCollection
-from torchmetrics.classification import BinaryPrecision, BinaryRecall, BinaryF1Score, BinaryAccuracy, BinaryAUROC
+from torchmetrics.classification import BinaryPrecision, BinaryRecall, \
+    BinaryF1Score, BinaryAccuracy, BinaryAUROC
 
 
 class ModelWrapper(LightningModule):
@@ -82,6 +89,20 @@ class ModelWrapper(LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
         return optimizer
+        # Alternatives to define scheduler
+        # sch = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        #    optimizer, T_0=5
+        # )
+
+        # learning rate scheduler
+        # return {
+        #    "optimizer": optimizer,
+        #    "lr_scheduler": {
+        #       "scheduler": sch,
+        #        "name": "scheduler",
+        #
+        #    }
+        # }
 
     def _shared_eval(self, batch):
         protein_embed, rna_embed, y = batch
@@ -96,7 +117,7 @@ class ModelWrapper(LightningModule):
 
 class RNAProteinInterAct(Module):
     r"""
-    Code heavily inspired from https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoder.html
+    Code heavily inspired copied from https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoder.html
     Args:
         d_model: the number of expected features in the encoder/decoder inputs (default=512).
         nhead: the number of heads in the multiheadattention models (default=8).
@@ -125,7 +146,6 @@ class RNAProteinInterAct(Module):
                  device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__()
-        
 
         encoder_layer = RNAProteinEncoderLayer(d_model, nhead, dim_feedforward, dropout,
                                                activation, layer_norm_eps, batch_first, norm_first,
@@ -209,6 +229,212 @@ class RNAProteinInterAct(Module):
             if p.dim() > 1:
                 xavier_uniform_(p)
 
+
+class RNAProteinInterActSE(Module):
+    r"""RNAProteinInterAct adapted for One Hot Encoding (Simple Embeddings - SE).
+    Args:
+        d_model: the number of expected features in the encoder/decoder inputs (default=512).
+        nhead: the number of heads in the multiheadattention models (default=8).
+        num_encoder_layers: the number of sub-encoder-layers in the encoder (default=6).
+        dim_feedforward: the dimension of the feedforward network model (default=2048).
+        dropout: the dropout value (default=0.1).
+        activation: the activation function of encoder/decoder intermediate layer, can be a string
+            ("relu" or "gelu") or a unary callable. Default: relu
+
+        layer_norm_eps: the eps value in layer normalization components (default=1e-5).
+        batch_first: If ``True``, then the input and output tensors are provided
+            as (batch, seq, feature). Default: ``False`` (seq, batch, feature).
+        norm_first: if ``True``, encoder and decoder layers will perform LayerNorms before
+            other attention and feedforward operations, otherwise after. Default: ``False`` (after).
+        embed_dim: dimensionality of input embeddings
+        key_padding_mask: if ``True`` padded zeros are masked. Default: ``false``.
+        device: device which runs computations.
+    """
+
+    def __init__(self, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+                 dim_feedforward: int = 2048, dropout: float = 0.1,
+                 activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+                 layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
+                 embed_dim: int = 640,
+                 key_padding_mask: bool = False,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super().__init__()
+
+        encoder_layer = RNAProteinEncoderLayer(d_model, nhead, dim_feedforward, dropout,
+                                               activation, layer_norm_eps, batch_first, norm_first,
+                                               **factory_kwargs)
+
+        encoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.encoder = RNAProteinEncoder(encoder_layer, num_encoder_layers, encoder_norm)
+
+        self._reset_parameters()
+
+        self.d_model = d_model
+        self.nhead = nhead
+        self.key_padding_mask = key_padding_mask
+        self.batch_first = batch_first
+        self.embed_dim = embed_dim
+
+        self.activation = torch.relu
+
+        self.linear_reduce_1 = Linear(4, d_model)
+        self.linear_reduce_2 = Linear(21, d_model)
+
+        self.linear1 = Linear(d_model, d_model // 2, **factory_kwargs)
+        self.linear2 = Linear(d_model // 2, d_model // 4, **factory_kwargs)
+        self.linear3 = Linear(d_model // 4, 1, **factory_kwargs)
+
+    def forward(self, rna_embed: Tensor, protein_embed: Tensor,
+                ) -> Tensor:
+        r"""Forward path.
+
+        Args:
+            rna_embed: RNA embedding of a sequence (required).
+            protein_embed: protein embedding of a sequence (required).
+        """
+
+        if not rna_embed.dim() == protein_embed.dim():
+            raise RuntimeError("both embeddings must have identical dimensionality")
+
+        rna_mask = None
+        protein_mask = None
+        if self.key_padding_mask:
+            rna_mask = rna_embed[:, :, 0] == 0.0
+            protein_mask = protein_embed[:, :, 0] == 0.0
+
+        x_1 = self.activation(self.linear_reduce_1(rna_embed))
+
+        x_2 = self.activation(self.linear_reduce_2(protein_embed))
+
+        x_1, x_2 = self.encoder(x_1, x_2, rna_mask=rna_mask, protein_mask=protein_mask)
+
+        x = torch.cat((x_1, x_2), 1)
+
+        x = self.activation(self.linear1(x))
+
+        x = self.activation(self.linear2(x))
+
+        x = torch.sigmoid(self.linear3(x))
+        return x[:, 0]
+        # NOTE: try different token
+        # return x.mean(dim=1)
+
+    @staticmethod
+    def generate_square_subsequent_mask(sz: int, device='cpu') -> Tensor:
+        r"""Generate a square mask for the sequence. The masked positions are filled with float('-inf').
+            Unmasked positions are filled with float(0.0).
+        """
+        return torch.triu(torch.full((sz, sz), float('-inf'), device=device), diagonal=1)
+
+    def _reset_parameters(self):
+        r"""Initiate parameters in the transformer model."""
+
+        for p in self.parameters():
+            if p.dim() > 1:
+                xavier_uniform_(p)
+
+
+class RNAProteinInterActRNAFormer(Module):
+    r"""RNAProteinInterAct adapted for RNAFormer embeddings.
+    Args:
+        d_model: the number of expected features in the encoder/decoder inputs (default=512).
+        nhead: the number of heads in the multiheadattention models (default=8).
+        num_encoder_layers: the number of sub-encoder-layers in the encoder (default=6).
+        dim_feedforward: the dimension of the feedforward network model (default=2048).
+        dropout: the dropout value (default=0.1).
+        activation: the activation function of encoder/decoder intermediate layer, can be a string
+            ("relu" or "gelu") or a unary callable. Default: relu
+
+        layer_norm_eps: the eps value in layer normalization components (default=1e-5).
+        batch_first: If ``True``, then the input and output tensors are provided
+            as (batch, seq, feature). Default: ``False`` (seq, batch, feature).
+        norm_first: if ``True``, encoder and decoder layers will perform LayerNorms before
+            other attention and feedforward operations, otherwise after. Default: ``False`` (after).
+        embed_dim: dimensionality of input embeddings
+        key_padding_mask: if ``True`` padded zeros are masked. Default: ``false``.
+        device: device which runs computations.
+    """
+
+    def __init__(self, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+                 dim_feedforward: int = 2048, dropout: float = 0.1,
+                 activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+                 layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
+                 embed_dim: int = 640,
+                 key_padding_mask: bool = False,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super().__init__()
+
+        encoder_layer = RNAProteinEncoderLayer(d_model, nhead, dim_feedforward, dropout,
+                                               activation, layer_norm_eps, batch_first, norm_first,
+                                               **factory_kwargs)
+
+        encoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.encoder = RNAProteinEncoder(encoder_layer, num_encoder_layers, encoder_norm)
+
+        self.conv2d = Conv2d(in_channels=150, out_channels=1, kernel_size=1)
+
+        self._reset_parameters()
+
+        self.d_model = d_model
+        self.nhead = nhead
+        self.key_padding_mask = key_padding_mask
+        self.batch_first = batch_first
+        self.embed_dim = embed_dim
+
+        self.activation = torch.relu
+
+        self.linear_reduce_1 = Linear(256, d_model)
+        self.linear_reduce_2 = Linear(embed_dim, d_model)
+
+        self.linear1 = Linear(d_model, d_model // 2, **factory_kwargs)
+        self.linear2 = Linear(d_model // 2, d_model // 4, **factory_kwargs)
+        self.linear3 = Linear(d_model // 4, 1, **factory_kwargs)
+
+    def forward(self, rna_embed: Tensor, protein_embed: Tensor,
+                ) -> Tensor:
+        r"""Forward path.
+
+        Args:
+            rna_embed: RNA embedding of a sequence (required).
+            protein_embed: protein embedding of a sequence (required).
+        """
+
+        # TO_DO: adapt embed_dim for RNAFormer
+        rna_embed = self.conv2d(rna_embed)
+        rna_embed = rna_embed.squeeze(1)
+
+        rna_mask = None
+        protein_mask = None
+        if self.key_padding_mask:
+            rna_mask = rna_embed[:, :, 0] == 0.0
+            protein_mask = protein_embed[:, :, 0] == 0.0
+
+        x_1 = self.activation(self.linear_reduce_1(rna_embed))
+        x_2 = self.activation(self.linear_reduce_2(protein_embed))
+        x_1, x_2 = self.encoder(x_1, x_2, rna_mask=rna_mask, protein_mask=protein_mask)
+        x = torch.cat((x_1, x_2), 1)
+        x = self.activation(self.linear1(x))
+        x = self.activation(self.linear2(x))
+        x = torch.sigmoid(self.linear3(x))
+        return x[:, 0]
+        # NOTE: try different token
+        # return x.mean(dim=1)
+
+    @staticmethod
+    def generate_square_subsequent_mask(sz: int, device='cpu') -> Tensor:
+        r"""Generate a square mask for the sequence. The masked positions are filled with float('-inf').
+            Unmasked positions are filled with float(0.0).
+        """
+        return torch.triu(torch.full((sz, sz), float('-inf'), device=device), diagonal=1)
+
+    def _reset_parameters(self):
+        r"""Initiate parameters in the transformer model."""
+
+        for p in self.parameters():
+            if p.dim() > 1:
+                xavier_uniform_(p)
 
 
 class RNAProteinEncoder(Module):

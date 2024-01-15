@@ -33,6 +33,7 @@ def df2fasta(df: pd.DataFrame, fasta_path: Path, idx: str):
                      df.iterrows()]
         SeqIO.write(sequences, handle, "fasta")
 
+
 def row2fasta(row: pd.Series, fasta_path: Path, idx: int):
     """
     The function constructs a SeqRecord object for a single DataFrame row
@@ -78,128 +79,6 @@ def load_rna_inter_csv(path: str):
         "predict": str,
     }
     return pd.read_csv(path, sep='\t', dtype=dtypes)
-
-
-def create_negative_dataset_per_interactor(positive_dataset: pd.DataFrame, interactor_idx: int):
-    """
-    Creates a negative dataset for a given interactor (protein or RNA). For every positive interaction in the dataset,
-    it creates a negative one with interactor changed based on cluster, family and category information.
-
-    Args:
-    - positive_dataset: DataFrame with positive interactions only
-    - interactor_idx: fixed interactor that is to be paired for a negative interaction with the changing interactor,
-    (1 = RNA, 2 = protein).
-
-    Returns:
-    - negative_interactions: DataFrame with negative interactions only
-    """
-    # Get the other interactor
-    changing_interactor_idx = 1 if interactor_idx == 2 else 2
-    sequence_type = 'RNA' if changing_interactor_idx == 1 else 'protein'
-
-    negative_interactions = []
-
-    for _, row in tqdm(positive_dataset.iterrows(), total=positive_dataset.shape[0]):
-
-        # Get all entries that include the interactor and get cluster, family and category info about the changing interactor
-        interacting_rows = positive_dataset[positive_dataset[f'Raw_ID{interactor_idx}'] == row[f'Raw_ID{interactor_idx}']]
-        
-        # Family information is only available for RNAs
-        if changing_interactor_idx == 1:
-            interacting_families = interacting_rows[f'Sequence_{changing_interactor_idx}_family'].unique()
-        interacting_clusters = interacting_rows[f'Sequence_{changing_interactor_idx}_cluster'].unique()
-        interacting_categories = interacting_rows[f'Category{changing_interactor_idx}'].unique()
-
-        # Exclude all entries whose changing_interactor is fo the same category as the current row's one
-        possible_interactors = positive_dataset[positive_dataset[f'Category{changing_interactor_idx}'].isin(interacting_categories)]
-        if not possible_interactors.empty:
-            
-            # Exclude all entries whose changing_interactor is in the same cluster as the current row's one
-            cl_possible_interactors = possible_interactors[~possible_interactors[f'Sequence_{changing_interactor_idx}_cluster'].isin(interacting_clusters)]
-            if not cl_possible_interactors.empty:
-                
-                # Family info only available for RNAs
-                if changing_interactor_idx == 1:
-
-                    # Exclude all entries whose changing_interactor is in the same family as the current row's one
-                    fam_possible_interactors = cl_possible_interactors[cl_possible_interactors[f'Sequence_{changing_interactor_idx}_family'].isin(interacting_families)]
-                    
-                    if not fam_possible_interactors.empty:                        
-                        neg_interaction = create_negative_interaction(row, fam_possible_interactors, interactor_idx)
-                        negative_interactions.append(neg_interaction)
-                    else:
-                        # print(f"Couldn't find {sequence_type} within different family. Assigning {sequence_type} based on cluster information.")
-                        
-                        neg_interaction = create_negative_interaction(row, cl_possible_interactors, interactor_idx)
-                        negative_interactions.append(neg_interaction)
-                
-                # Protein search ends here
-                else:
-                    neg_interaction = create_negative_interaction(row, cl_possible_interactors, interactor_idx)
-                    negative_interactions.append(neg_interaction)
-            else:
-                # print(f"Couldn't find {sequence_type} within different cluster. Assigning {sequence_type} based on category.")
-
-                neg_interaction = create_negative_interaction(row, possible_interactors, interactor_idx)
-                negative_interactions.append(neg_interaction)
-        else:
-            print(f"Couldn't find {sequence_type} with different category. Assigning {sequence_type} randomly.")
-            possible_interactors = positive_dataset[~positive_dataset.index.isin(interacting_rows.index)]
-
-            neg_interaction = create_negative_interaction(row, possible_interactors, interactor_idx)
-            negative_interactions.append(neg_interaction)
-
-    return pd.DataFrame(negative_interactions)
-
-
-def create_negative_interaction(positive_interaction, possible_interactors, interactor_idx):
-    """
-    Creates a negative interaction by randomly selecting a changing interactor from the possible interactors and combining new changing interactor information
-    with the interactor information from the positive interaction example.
-
-    Args:
-    - positive_interaction (pd.Series): Positive RPI entry.
-    - possible_interactors (pd.DataFrame): Filtered DataFrame.
-    - interactor_idx (int): Index of the fixed interactor (1 = RNA, 2 = protein).
-    
-    Returns:
-    - negative_interaction (pd.Series): Negative RPI entry.
-    """
-    changing_interactor_idx = 1 if interactor_idx == 2 else 2
-
-    negative_interaction = positive_interaction.copy()
-    
-    # From all possible interactors, select one at random
-    random_changing_interactor_id = choice(possible_interactors[f'Raw_ID{changing_interactor_idx}'].unique())
-    changing_interactor = possible_interactors[possible_interactors[f'Raw_ID{changing_interactor_idx}'] == random_changing_interactor_id].iloc[0]
-   
-    # Select all columns that are relevant for the changing_interactor
-    interactor_columns = [
-                            f'Raw_ID{changing_interactor_idx}', f'Interactor{changing_interactor_idx}.Symbol', f'Category{changing_interactor_idx}',
-                            f'Species{changing_interactor_idx}', f'Sequence_{changing_interactor_idx}', f'Sequence_{changing_interactor_idx}_len',
-                            f'Sequence_{changing_interactor_idx}_ID', f'Sequence_{changing_interactor_idx}_cluster',
-                            f'Sequence_{changing_interactor_idx}_cluster_sim', f'Sequence_{changing_interactor_idx}_cluster_reference',
-                            ]
-    if changing_interactor_idx == 1:
-        interactor_columns.extend(['Sequence_1_rfam_q_accession', 'Sequence_1_family',
-        'Sequence_1_rfam_t_accession', 'Sequence_1_rfam_description',
-        'Sequence_1_rfam_e_value'])
-    
-    # Copy all relevant columns from the chosen changing_interactor to the negative interaction entry
-    for column in interactor_columns:
-        negative_interaction[column] = changing_interactor[column]
-
-    # Indicate it's a negative interaction 
-    negative_interaction['interaction'] = False
-    negative_interaction['RNAInterID'] = f'{negative_interaction["RNAInterID"]}_N'
-    
-    # Set remaining columns to NaN
-    negative_interaction['score'] = 0
-    negative_interaction['strong'] = "NaN" 
-    negative_interaction['weak'] = "NaN"
-    negative_interaction['predict'] = "NaN"
-
-    return negative_interaction
 
 
 def divide_dataframe(df, max_task_id, task_id):
@@ -387,6 +266,3 @@ def fetch_protein_fasta(object_ids):
                 print(f"{idx}/{len(object_ids)} proteins done")
             results.append(future.result())
     return results
-
-if __name__ == "__main__":
-    breakpoint()
