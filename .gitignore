@@ -168,9 +168,10 @@ data/*
 !data/
 
 lightning_logs/
+checkpoints/
 .DS_Store
 
 RNAProteinInteractions/
-RNAProteinInterAct/
+RNAProteinInterAct/*
 
 submit_array.py

@@ -12,7 +12,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 src_dir = Path.cwd().parent
 sys.path.append(str(src_dir))
 from model import RNAProteinInterAct, ModelWrapper
-from dataloader import get_dataloader
+from dataloader import get_dataloaders
 
 
 def main(args):
@@ -40,7 +40,8 @@ def main(args):
     logger = True
 
     if args.wandb:
-        logger = lightning.pytorch.loggers.WandbLogger(project="RNAProteinInterAct")
+        logger = lightning.pytorch.loggers.WandbLogger(project="RNAProteinInterAct",
+                                                       name=f"{args.wandb_run_name}, seed: {args.seed}")
     
     lr_monitor = LearningRateMonitor(logging_interval='step')
     
@@ -51,7 +52,7 @@ def main(args):
                       logger=logger,
                       callbacks=[lr_monitor])
     
-    train_dataloader, valid_dataloader = get_dataloader(
+    train_dataloader, valid_dataloader = get_dataloaders(
                                         loader_type=args.dataloader_type,
                                         train_set_path=args.train_set_path,
                                         rna_embeddings_path=args.rna_embeddings_path,
@@ -73,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument("--devices", type=int, default=1, help="Number of devices")
     parser.add_argument("--compiled", action='store_true', default=False, help="Enables Torch compiled Module")
     parser.add_argument("--wandb", action='store_true', default=False, help="Enables logging via wandb")
+    parser.add_argument("--wandb_run_name", default="default", help="Name of the wandb run")
     parser.add_argument("--num_encoder_layers", type=int, default=2, help="Number of encoder layers")
     parser.add_argument("--max_epochs", type=int, default=1, required=True, help="Maximum number of epochs")
     parser.add_argument("--max_time", default=None, help="Maximum time")
@@ -88,7 +90,8 @@ if __name__ == '__main__':
     parser.add_argument("--dataloader_type", default="PandasInMemory", help="Type of dataloader")
     parser.add_argument("--protein_embeddings_path", default="data/embeddings/protein_embeddings.npy", help="Path to protein embeddings")
     parser.add_argument("--rna_embeddings_path", default="data/embeddings/rna_embeddings.npy", help="Path to RNA embeddings")
-    parser.add_argument("--train_set_path", default='data/interactions/train_set.parquet', help="Path to the training database file")
+    parser.add_argument("--train_set_path", default='data/interactions/train_set.parquet', help="Path to the train set file")
+    parser.add_argument("--test_set_path", default='data/interactions/test_set.parquet', help="Path to the test set file")
     parser.add_argument("--val_set_size", type=float, default=0.15, help="Validation set size")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
 

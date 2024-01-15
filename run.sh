@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=01:00:00
 #SBATCH --mem=100000mb
-#SBATCH --job-name=rpi_testing_2
+#SBATCH --job-name=rpi_test_save
 #SBATCH --chdir=/work/dlclarge1/matusd-rpi/RPI
 #SBATCH --output="LOGS//%x.%N.%A.%a.out"
 #SBATCH --error="LOGS//%x.%N.%A.%a.err"
@@ -22,12 +22,13 @@ workdir=/work/dlclarge1/matusd-rpi/RPI
 
 cd "$workdir"
 
-python src/train.py \
+python src/train_and_eval.py \
 --accelerator gpu \
 --devices 1 \
 --wandb \
+--wandb_run_name test \
 --num_encoder_layers 1 \
---max_epochs 2 \
+--max_epochs 1 \
 --num_dataloader_workers 8 \
 --batch_size 8 \
 --d_model 20 \

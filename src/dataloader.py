@@ -78,7 +78,7 @@ class RNAInterActionsPandasInMemory(Dataset):
         return padded_seq_1_embed, padded_seq_2_embed, interaction, row_number
 
 
-def get_dataloader(loader_type: str,
+def get_dataloaders(loader_type: str,
                           train_set_path: str,
                           rna_embeddings_path: str,
                           protein_embeddings_path: str,
@@ -100,6 +100,7 @@ def get_dataloader(loader_type: str,
             protein_embeddings,
             train_set_path,
         )
+
 
         train_set_size = 1 - val_set_size
         train_set, valid_set = random_split(dataset, [train_set_size, val_set_size])
@@ -132,14 +133,14 @@ def set_seed(seed):
 
 def main(args):
     
-    train_dataloader, valid_dataloader = get_dataloader(loader_type=args.dataloader_type,
-                                                        train_set_path=args.train_set_path,
-                                                        rna_embeddings_path=args.rna_embeddings_path,
-                                                        protein_embeddings_path=args.protein_embeddings_path,
-                                                        val_set_size=args.val_set_size,
-                                                        num_workers=args.num_workers,
-                                                        batch_size=args.batch_size
-                                                        )
+    train_dataloader, valid_dataloader, test_dataloader = get_dataloaders(  loader_type=args.dataloader_type,
+                                                                            train_set_path=args.train_set_path,
+                                                                            rna_embeddings_path=args.rna_embeddings_path,
+                                                                            protein_embeddings_path=args.protein_embeddings_path,
+                                                                            val_set_size=args.val_set_size,
+                                                                            num_workers=args.num_workers,
+                                                                            batch_size=args.batch_size
+                                                                            )
     total_start = time()
     for idx, _ in tqdm(enumerate(iter(train_dataloader))):
         if idx == args.amount - 1:
@@ -152,6 +153,11 @@ def main(args):
             break
     print(f"Total time: {time() - total_start} for valid_dataloader providing batches.")
 
+    total_start = time()
+    for idx, _ in tqdm(enumerate(iter(test_dataloader))):
+        if idx == args.amount - 1:
+            break
+    print(f"Total time: {time() - total_start} for test_dataloader providing batches.")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Dataloader script for RNAProteinInterAct.")
