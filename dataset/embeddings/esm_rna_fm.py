@@ -40,6 +40,10 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
 
     # Split data across multiple tasks
     data_batch = divide_dataframe(df, max_task_id, task_id)
+    if len(data_batch) == 0:
+        print("No data to process.")
+        return
+    
     print(f"Creating embeddings for {len(data_batch)} sequences out of {df.shape[0]}")
 
     # Load the specified model
@@ -69,11 +73,11 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
     for _, row in tqdm(enumerate(data_batch), total=len(data_batch), desc="Embedding sequences"):
         start = time()
 
-        sequence_id = row[f'Sequence_{idx}_ID']
+        embedding_id = row[f'Sequence_{idx}_emb_ID']
         sequence = row[f'Sequence_{idx}'].upper()
 
         # Process sequence
-        _, _, batch_tokens = batch_converter([(sequence_id, sequence)])
+        _, _, batch_tokens = batch_converter([(embedding_id, sequence)])
         batch_lens = (batch_tokens != alphabet.padding_idx).sum(1)
 
         if enable_cuda:
@@ -87,7 +91,7 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
         # Generate per-sequence representations
         # NOTE: token 0 is always a beginning-of-sequence token, so the first residue is token 1.
         for i, tokens_len in enumerate(batch_lens):
-            np.save(f"{embedding_folder}/{sequence_id}",
+            np.save(f"{embedding_folder}/{embedding_id}",
                     token_representations[i, 1: tokens_len - 1].float())
         
         del batch_tokens, token_representations, results, batch_lens

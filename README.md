@@ -131,3 +131,7 @@ python train_rna-fm_random_split.py
 --db-file-valid dataset/results/final_test_set_random.parquet 
 --seed=0
 ```
+
+```
+python dataset/embeddings/esm_rna_fm.py --model_type "esm2" --max_task_id 5 --task_id 3
+```

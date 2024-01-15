@@ -161,8 +161,7 @@ cython_debug/
 
 # Custom
 
-experiment_logs/
-cluster_logs/
+LOGS/
 wandb/
 
 data/*
@@ -172,3 +171,5 @@ lightning_logs/
 .DS_Store
 
 RNAProteinInteractions/
+
+submit_array.py
