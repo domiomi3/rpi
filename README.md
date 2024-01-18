@@ -107,7 +107,7 @@ Download RPI2825 dataset from here: https://universe.bits-pilani.ac.in/goa/aduri
 And save the RPI2825.csv in the data/rpi2825 folder
 
 ## Step 8: Training
-train_and_eval
+python src/train_and_eval.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --max_epochs 1
 
 ## Step 9: Testing
 
@@ -117,8 +117,17 @@ for RPI2824 - run dataset/create_rpi2825_test_set.ipynb
 then esm_rna_fm.py with changed rna/protein paths to get embeddings
 finally, run src/test.py with specified argument for rpi2825
 
-python dataset/embeddings/esm_rna_fm.py --rna_path data/embeddings/rpi2825/unique_RNA.parquet --emb_dir data/embeddings/rpi2825 --model_type rna_fm --max_task_id 1 (2 min)
+python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_unique_RNA.parquet --emb_dir data/embeddings/rpi2825 --model_type rna_fm --max_task_id 1 (2 min)
 
-python dataset/embeddings/esm_rna_fm.py --rna_path data/embeddings/rpi2825/unique_proteins.parquet --emb_dir data/embeddings/rpi2825 --model_type esm2 --max_task_id 1 (15 min)
+python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_unique_proteins.parquet --emb_dir data/embeddings/rpi2825 --model_type esm2 --max_task_id 1 (15 min)
 
 python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10893-esm_rna_fm-seed=6.ckpt
+
+## one-hot encoding
+python dataset/embeddings/one_hot_encoding.py --sequence_type rna
+
+python dataset/embeddings/one_hot_encoding.py --sequence_type protein
+
+python src/train_and_eval.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --max_epochs 1 --one_hot_encoding
+
+python src/test.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10908-test-seed=6.ckpt

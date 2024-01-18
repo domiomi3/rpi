@@ -11,22 +11,28 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 
 src_dir = Path.cwd().parent
 sys.path.append(str(src_dir))
-from model import RNAProteinInterAct, ModelWrapper
+from model import RNAProteinInterAct, RNAProteinInterActSE, ModelWrapper
 from dataloader import get_dataloader
 
 
 def main(args):
     
-    rpi_model = RNAProteinInterAct( batch_first=True,
-                                    embed_dim=640,
-                                    d_model=args.d_model,
-                                    num_encoder_layers=args.num_encoder_layers,
-                                    nhead=args.n_head,
-                                    dim_feedforward=args.dim_feedforward,
-                                    key_padding_mask=args.key_padding_mask,
-                                    norm_first=True,
-                                    dropout=args.dropout
-                                    )
+    if args.one_hot_encoding:
+        model = RNAProteinInterActSE
+    else:
+        model = RNAProteinInterAct
+
+    rpi_model = model( 
+                        batch_first=True,
+                        embed_dim=640,
+                        d_model=args.d_model,
+                        num_encoder_layers=args.num_encoder_layers,
+                        nhead=args.n_head,
+                        dim_feedforward=args.dim_feedforward,
+                        key_padding_mask=args.key_padding_mask,
+                        norm_first=True,
+                        dropout=args.dropout
+                     )
     
     lightning_module = ModelWrapper(rpi_model,
                                     lr_init=args.lr_init,
@@ -85,6 +91,7 @@ if __name__ == '__main__':
     parser.add_argument("--wandb", action='store_true', default=False, help="Enables logging via wandb")
     parser.add_argument("--wandb_run_name", default="default", help="Name of the wandb run")
     
+    parser.add_argument("--one_hot_encoding", action='store_true', default=False, help="Enables one-hot encoding")
     parser.add_argument("--num_encoder_layers", type=int, default=2, help="Number of encoder layers")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--d_model", type=int, default=20, help="Dimension of model")

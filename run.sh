@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=1-00:00:00
 #SBATCH --mem=100000mb
-#SBATCH --job-name=test
+#SBATCH --job-name=test_one_hot
 #SBATCH --chdir=/work/dlclarge1/matusd-rpi/RPI
 #SBATCH --output="LOGS//%x.%N.%A.%a.out"
 #SBATCH --error="LOGS//%x.%N.%A.%a.err"
@@ -26,7 +26,7 @@ python src/train_and_eval.py \
 --accelerator gpu \
 --devices 1 \
 --wandb \
---wandb_run_name esm_rna_fm \
+--wandb_run_name test \
 --num_encoder_layers 1 \
 --max_epochs 1 \
 --num_dataloader_workers 8 \
@@ -38,7 +38,8 @@ python src/train_and_eval.py \
 --weight_decay 0.00022637229697395497 \
 --key_padding_mask \
 --lr_init 0.00001923730509654649 \
---protein_embeddings_path data/embeddings/protein_embeddings.npy \
---rna_embeddings_path data/embeddings/rna_embeddings.npy \
+--protein_embeddings_path data/embeddings/one_hot_protein.npy \
+--rna_embeddings_path data/embeddings/one_hot_rna.npy \
 --train_set_path data/interactions/train_set.parquet \
 --seed 6 \
+--one_hot_encoding \

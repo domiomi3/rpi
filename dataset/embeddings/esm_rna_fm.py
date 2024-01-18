@@ -145,8 +145,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--enable_cuda', type=bool, default=False, help='Enable or disable CUDA')
-    parser.add_argument('--rna_path', type=str, default="data/embeddings/unique_RNA.parquet", help='Path to the RNA data (for RNA-FM model)')
-    parser.add_argument('--protein_path', type=str, default="data/embeddings/unique_proteins.parquet", help='Path to the protein data (for ESM-2 model)')
+    parser.add_argument('--rna_path', type=str, default="data/annotations/unique_rna.parquet", help='Path to the RNA data (for RNA-FM model)')
+    parser.add_argument('--protein_path', type=str, default="data/annotations/unique_proteins.parquet", help='Path to the protein data (for ESM-2 model)')
     parser.add_argument('--repr_layer', type=int, help='Representation layer to extract embeddings from. Set to 30 for ESM-2, 12 for RNA-FM')
     parser.add_argument('--max_task_id', type=int, default=20, help='Maximum task ID')
     parser.add_argument('--task_id', type=int, default=1, help='Task ID')
