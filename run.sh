@@ -3,9 +3,9 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
-#SBATCH --time=01:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --mem=100000mb
-#SBATCH --job-name=rpi_test_save
+#SBATCH --job-name=rpi_111111
 #SBATCH --chdir=/work/dlclarge1/matusd-rpi/RPI
 #SBATCH --output="LOGS//%x.%N.%A.%a.out"
 #SBATCH --error="LOGS//%x.%N.%A.%a.err"
@@ -26,9 +26,9 @@ python src/train_and_eval.py \
 --accelerator gpu \
 --devices 1 \
 --wandb \
---wandb_run_name test \
+--wandb_run_name esm_rna_fm \
 --num_encoder_layers 1 \
---max_epochs 1 \
+--max_epochs 150 \
 --num_dataloader_workers 8 \
 --batch_size 8 \
 --d_model 20 \
@@ -42,5 +42,4 @@ python src/train_and_eval.py \
 --protein_embeddings_path data/embeddings/protein_embeddings.npy \
 --rna_embeddings_path data/embeddings/rna_embeddings.npy \
 --train_set_path data/interactions/train_set.parquet \
---val_set_size 0.15 \
---seed 0 \
+--seed 111111 \

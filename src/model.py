@@ -89,20 +89,6 @@ class ModelWrapper(LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
         return optimizer
-        # Alternatives to define scheduler
-        # sch = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        #    optimizer, T_0=5
-        # )
-
-        # learning rate scheduler
-        # return {
-        #    "optimizer": optimizer,
-        #    "lr_scheduler": {
-        #       "scheduler": sch,
-        #        "name": "scheduler",
-        #
-        #    }
-        # }
 
     def _shared_eval(self, batch):
         protein_embed, rna_embed, y = batch

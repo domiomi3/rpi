@@ -78,11 +78,10 @@ class RNAInterActionsPandasInMemory(Dataset):
         return padded_seq_1_embed, padded_seq_2_embed, interaction, row_number
 
 
-def get_dataloaders(loader_type: str,
+def get_dataloader(loader_type: str,
                           train_set_path: str,
                           rna_embeddings_path: str,
                           protein_embeddings_path: str,
-                          val_set_size:float,
                           seed: int,
                           **kwargs
                           ):
@@ -95,20 +94,15 @@ def get_dataloaders(loader_type: str,
             rna_embeddings_path,
             protein_embeddings_path
         )
-        dataset = RNAInterActionsPandasInMemory(
+        train_set = RNAInterActionsPandasInMemory(
             rna_embeddings,
             protein_embeddings,
             train_set_path,
         )
 
+        assert train_set is not None, 'train_set is None. Check if the path is correct.' 
 
-        train_set_size = 1 - val_set_size
-        train_set, valid_set = random_split(dataset, [train_set_size, val_set_size])
-
-    assert train_set is not None
-    assert valid_set is not None
-
-    return DataLoader(train_set, shuffle=True, **kwargs), DataLoader(valid_set, shuffle=False, **kwargs)
+        return DataLoader(train_set, shuffle=True, **kwargs)
 
 
 def set_seed(seed):
@@ -137,7 +131,6 @@ def main(args):
                                                                             train_set_path=args.train_set_path,
                                                                             rna_embeddings_path=args.rna_embeddings_path,
                                                                             protein_embeddings_path=args.protein_embeddings_path,
-                                                                            val_set_size=args.val_set_size,
                                                                             num_workers=args.num_workers,
                                                                             batch_size=args.batch_size
                                                                             )
@@ -168,7 +161,6 @@ if __name__ == '__main__':
     parser.add_argument("--rna_embeddings_path", type=str, default="data/embeddings/rna_embeddings.npy", help="Path to all RNA embeddings")
     parser.add_argument("--protein_embeddings_path", type=str, default="data/embeddings/protein_embeddings.npy", help="Path to all protein embeddings")
     parser.add_argument("--train_set_path", type=str, default="data/interactions/train_set.parquet", help="Path to the train set file")
-    parser.add_argument("--val_set_size", type=float, default=0.15, help="Size of the validation set in percent")
     parser.add_argument("--dataloader_type", type=str, default=None, help="Type of dataloader")
 
     args = parser.parse_args()

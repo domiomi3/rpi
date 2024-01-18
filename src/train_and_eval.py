@@ -7,12 +7,12 @@ import lightning.pytorch.loggers
 from pathlib import Path
 
 from lightning import Trainer
-from lightning.pytorch.callbacks import LearningRateMonitor
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 
 src_dir = Path.cwd().parent
 sys.path.append(str(src_dir))
 from model import RNAProteinInterAct, ModelWrapper
-from dataloader import get_dataloaders
+from dataloader import get_dataloader
 
 
 def main(args):
@@ -31,7 +31,7 @@ def main(args):
     lightning_module = ModelWrapper(rpi_model,
                                     lr_init=args.lr_init,
                                     weight_decay=args.weight_decay,
-                                    seed=args.seed
+                                    seed=args.seed,
                                     )
     if args.compiled:
         lightning_module = torch.compile(lightning_module)
@@ -45,25 +45,33 @@ def main(args):
     
     lr_monitor = LearningRateMonitor(logging_interval='step')
     
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=args.checkpoint_path,  # Custom path for saving checkpoints
+        filename='{epoch}-{step}--' + f'{args.wandb_run_name}',  # Filename format
+        monitor='train_loss',  # Metric to monitor for best models
+        mode='min',  # Mode for the monitored metric, 'min' for minimization
+        save_last=True,  # Save the last checkpoint in addition to the best ones
+    )
+
     trainer = Trainer(accelerator=args.accelerator,
                       devices=args.devices,
                       max_epochs=args.max_epochs,
                       max_time=args.max_time,
                       logger=logger,
-                      callbacks=[lr_monitor])
+                      limit_val_batches=0.0,
+                      callbacks=[lr_monitor, checkpoint_callback]
+                      )
     
-    train_dataloader, valid_dataloader = get_dataloaders(
-                                        loader_type=args.dataloader_type,
+    train_dataloader = get_dataloader(  loader_type=args.dataloader_type,
                                         train_set_path=args.train_set_path,
                                         rna_embeddings_path=args.rna_embeddings_path,
                                         protein_embeddings_path=args.protein_embeddings_path,
-                                        val_set_size=args.val_set_size,
                                         seed=args.seed,
                                         num_workers=args.num_dataloader_workers,
                                         batch_size=args.batch_size
     )
 
-    trainer.fit(lightning_module, train_dataloader, valid_dataloader)
+    trainer.fit(lightning_module, train_dataloader)
 
 
 if __name__ == '__main__':
@@ -92,8 +100,8 @@ if __name__ == '__main__':
     parser.add_argument("--rna_embeddings_path", default="data/embeddings/rna_embeddings.npy", help="Path to RNA embeddings")
     parser.add_argument("--train_set_path", default='data/interactions/train_set.parquet', help="Path to the train set file")
     parser.add_argument("--test_set_path", default='data/interactions/test_set.parquet', help="Path to the test set file")
-    parser.add_argument("--val_set_size", type=float, default=0.15, help="Validation set size")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
+    parser.add_argument("--checkpoint_path", default="checkpoints", help="Path to the checkpoints")
 
     args = parser.parse_args()
 
