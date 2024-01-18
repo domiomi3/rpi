@@ -1,5 +1,6 @@
 import argparse
 import os
+
 from lightning import Trainer
 
 from model import ModelWrapper
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument("--rna_embeddings_path", type=str, default="data/embeddings/rna_embeddings.npy", help="Path to all RNA embeddings")
     parser.add_argument("--protein_embeddings_path", type=str, default="data/embeddings/protein_embeddings.npy", help="Path to all protein embeddings")
     parser.add_argument("--test_set_path", type=str, default="data/interactions/test_set.parquet", help="Path to the test set file")
-    parser.add_argument("--checkpoint_path", type=str, default="model.ckpt", help="Path to model's checkpoint")
+    parser.add_argument("--checkpoint_path", type=str, default="checkpoints/model.ckpt", help="Path to model's checkpoint")
     parser.add_argument("--device", type=str, default="cpu", help="Device to run the model on")
 
     args = parser.parse_args()

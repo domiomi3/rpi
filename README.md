@@ -106,39 +106,19 @@ Download RPI2825 dataset from here: https://universe.bits-pilani.ac.in/goa/aduri
 
 And save the RPI2825.csv in the data/rpi2825 folder
 
-## Step 8: Run final evaluation (using RNA-FM & ESM embeddings)
-run script [experiments/train/train_rna-fm_random_split.py](https://github.com/automl-private/RPI/blob/main/experiments/train/train_rna-fm_random_split.py) with stated hyperparameters 
-```
-python train_rna-fm_random_split.py 
---accelerator gpu 
---devices 1 
---wandb 
---num-encoder-layers 1 
---max-epochs 150 
---num-dataloader-workers 8 
---batch-size 8 
---d-model 20 
---n-head 2 
---dim-feedforward 20 
---dropout 0.21759085167606332 
---weight-decay 0.00022637229697395497 
---key-padding-mask 
---lr-init 0.00001923730509654649 
---dataloader-type PandasInMemory 
---protein-embeddings-path dataset/results/protein_embeddings.npy 
---rna-embeddings-path dataset/results/rna_embeddings.npy 
---db-file-train dataset/results/final_train_set.parquet 
---db-file-valid dataset/results/final_test_set_random.parquet 
---seed=0
-```
+## Step 8: Training
+train_and_eval
 
-```
-python dataset/embeddings/esm_rna_fm.py --model_type "esm2" --max_task_id 5 --task_id 3
-```
+## Step 9: Testing
 
-Abstract:
-Introduction:
-Method:
- - pipeline
-Experiments
- -  
+python src/test.py
+
+for RPI2824 - run dataset/create_rpi2825_test_set.ipynb
+then esm_rna_fm.py with changed rna/protein paths to get embeddings
+finally, run src/test.py with specified argument for rpi2825
+
+python dataset/embeddings/esm_rna_fm.py --rna_path data/embeddings/rpi2825/unique_RNA.parquet --emb_dir data/embeddings/rpi2825 --model_type rna_fm --max_task_id 1 (2 min)
+
+python dataset/embeddings/esm_rna_fm.py --rna_path data/embeddings/rpi2825/unique_proteins.parquet --emb_dir data/embeddings/rpi2825 --model_type esm2 --max_task_id 1 (15 min)
+
+python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10893-esm_rna_fm-seed=6.ckpt

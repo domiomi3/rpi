@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 def create_embeddings(df, enc_size, alphabet, idx):
     """
-    Create one-hot-encoding for provided sequences.
+    Create one-hot-encodings for provided sequences.
 
     Args:
     - df (pd.DataFrame): DataFrame containing sequences.
@@ -68,7 +68,7 @@ def main(idx, emb_dir, seq_path, enc_size, alphabet):
 
     unique_seq = pd.read_parquet(seq_path)
     _, one_hot_embeddings = create_embeddings(unique_seq, enc_size, alphabet, idx)
-    breakpoint()
+
     np.save(one_hot_dir, f"one_hot_{sequence_type}.npy", one_hot_embeddings) 
 
 
@@ -87,23 +87,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    working_dir = args.working_dir
-    emb_dir = args.emb_dir
-    rna_path = args.rna_path
-    protein_path = args.protein_path
-    rna_enc_size = args.rna_enc_size
-    protein_enc_size = args.protein_enc_size
-    rna_alphabet = args.rna_alphabet
-    protein_alphabet = args.protein_alphabet
-    sequence_type = args.sequence_type
+    os.chdir(args.working_dir)
 
-    os.chdir(working_dir)
-
-    if sequence_type == 'rna':
-        rna_path = os.path.join(emb_dir, rna_path)
-        main('1', emb_dir, rna_path, rna_enc_size, rna_alphabet)
-    elif sequence_type == 'protein':
-        protein_path = os.path.join(emb_dir, protein_path)
-        main('2', emb_dir, protein_path, protein_enc_size, protein_alphabet)
+    if args.sequence_type == 'rna':
+        rna_path = os.path.join(args.emb_dir, args.rna_path)
+        main('1', args.emb_dir, rna_path, args.rna_enc_size, args.rna_alphabet)
+    elif args.sequence_type == 'protein':
+        protein_path = os.path.join(args.emb_dir, args.protein_path)
+        main('2', args.emb_dir, protein_path, args.protein_enc_size, args.protein_alphabet)
     else:
-        raise ValueError(f"Invalid sequence type: {sequence_type}. Must be either 'rna' or 'protein'.")
+        raise ValueError(f"Invalid sequence type: {args.sequence_type}. Must be either 'rna' or 'protein'.")

@@ -48,19 +48,17 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
 
     # Load the specified model
     if model_type == 'rna_fm':
-        embedding_folder = os.path.join(emb_dir, "rna_fm")
         model, alphabet = fm.pretrained.rna_fm_t12()
         idx = '1'
     elif model_type == 'esm2':
-        embedding_folder = os.path.join(emb_dir, "esm")
         model, alphabet = esm.pretrained.esm2_t30_150M_UR50D()
         idx = '2'
     else:
         raise ValueError("Invalid model type. Choose 'rna_fm' or 'esm2'.")
 
      # Ensure the directory exists
-    if not os.path.exists(embedding_folder):
-        os.makedirs(embedding_folder)
+    if not os.path.exists(emb_dir):
+        os.makedirs(emb_dir)
 
     batch_converter = alphabet.get_batch_converter()
     model.eval()  # Disables dropout for deterministic results
@@ -91,7 +89,7 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
         # Generate per-sequence representations
         # NOTE: token 0 is always a beginning-of-sequence token, so the first residue is token 1.
         for i, tokens_len in enumerate(batch_lens):
-            np.save(f"{embedding_folder}/{embedding_id}",
+            np.save(f"{emb_dir}/{embedding_id}",
                     token_representations[i, 1: tokens_len - 1].float())
         
         del batch_tokens, token_representations, results, batch_lens
@@ -115,18 +113,10 @@ def merge_embeddings(emb_dir, model_type):
     Returns:
     - None
     """
-    # Set the directory based on the model type
-    if model_type == 'rna_fm':
-        sequence_type = 'RNA'
-        embedding_folder = os.path.join(emb_dir, "rna_fm")
-    elif model_type == 'esm2':
-        sequence_type = 'protein'
-        embedding_folder = os.path.join(emb_dir, "esm")
-    else:
-        raise ValueError("Invalid model type. Choose 'rna_fm' or 'esm2'.")
+    sequence_type = 'rna' if model_type == 'rna_fm' else 'protein'
 
     # Get all .npy files from the directory
-    file_paths = [os.path.join(embedding_folder, f) for f in os.listdir(embedding_folder) if f.endswith('.npy')]
+    file_paths = [os.path.join(emb_dir, f) for f in os.listdir(emb_dir) if f.endswith('.npy')]
 
     embeddings = []
 
@@ -137,9 +127,6 @@ def merge_embeddings(emb_dir, model_type):
         padded_emb[:emb.shape[0], :] = emb
         embeddings.append(padded_emb)
 
-        # os.remove(embedding_path)
-
-
     # Stack embeddings into a single array
     embeddings = np.stack(embeddings, axis=0)
 
@@ -148,7 +135,8 @@ def merge_embeddings(emb_dir, model_type):
     print(f"Embeddings shape: {embeddings.shape}")
 
     # Save the merged embeddings
-    merged_embeddings_path = os.path.join(emb_dir, f"{sequence_type.lower()}_embeddings.npy")
+    parent_dir = os.path.dirname(emb_dir)
+    merged_embeddings_path = os.path.join(parent_dir, f"{sequence_type}_embeddings.npy")
     np.save(merged_embeddings_path, embeddings)
     print(f"Merged embeddings saved to {merged_embeddings_path}")
 
@@ -157,8 +145,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--enable_cuda', type=bool, default=False, help='Enable or disable CUDA')
-    parser.add_argument('--rna_path', type=str, default="unique_RNA.parquet", help='Path to the RNA data (for RNA-FM model)')
-    parser.add_argument('--protein_path', type=str, default="unique_proteins.parquet", help='Path to the protein data (for ESM-2 model)')
+    parser.add_argument('--rna_path', type=str, default="data/embeddings/unique_RNA.parquet", help='Path to the RNA data (for RNA-FM model)')
+    parser.add_argument('--protein_path', type=str, default="data/embeddings/unique_proteins.parquet", help='Path to the protein data (for ESM-2 model)')
     parser.add_argument('--repr_layer', type=int, help='Representation layer to extract embeddings from. Set to 30 for ESM-2, 12 for RNA-FM')
     parser.add_argument('--max_task_id', type=int, default=20, help='Maximum task ID')
     parser.add_argument('--task_id', type=int, default=1, help='Task ID')
@@ -168,32 +156,21 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    enable_cuda = args.enable_cuda
-    rna_path = args.rna_path
-    protein_path = args.protein_path
-    repr_layer = args.repr_layer
-    max_task_id = args.max_task_id
-    task_id = args.task_id
-    max_task_id = args.max_task_id
-    working_dir = args.working_dir
-    emb_dir = args.emb_dir
-    model_type = args.model_type
-
-    os.chdir(working_dir)
-
-    # Curate paths
-    rna_path = os.path.join(emb_dir, rna_path)
-    protein_path = os.path.join(emb_dir, protein_path)
+    os.chdir(args.working_dir)
 
     if args.model_type == 'rna_fm':
-        repr_layer = 12
-        save_dir = os.path.join(emb_dir, "rna_fm")
-        # create_embeddings(emb_dir, rna_path, model_type, enable_cuda, repr_layer, max_task_id, task_id)
-        merge_embeddings(emb_dir, model_type)
+        args.repr_layer = 12
+        rna_fm_dir = os.path.join(args.emb_dir, "rna_fm")
+
+        create_embeddings(rna_fm_dir, args.rna_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id)
+        merge_embeddings(rna_fm_dir, args.model_type)
+
     elif args.model_type == 'esm2':
-        repr_layer = 30
-        save_dir = os.path.join(emb_dir, "esm")
-        # create_embeddings(emb_dir, protein_path, model_type, enable_cuda, repr_layer, max_task_id, task_id)
-        merge_embeddings(emb_dir, model_type)
+        args.repr_layer = 30
+        esm_dir = os.path.join(args.emb_dir, "esm")
+
+        create_embeddings(esm_dir, args.protein_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id)
+        merge_embeddings(esm_dir, args.model_type)
+
     else:
         raise ValueError("Invalid model type. Choose 'rna_fm' or 'esm2'.")
