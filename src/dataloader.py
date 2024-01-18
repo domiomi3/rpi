@@ -10,6 +10,7 @@ import numpy as np
 from time import time
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, random_split
+from typing import Optional
 
 
 class RNAInterActionsPandasInMemory(Dataset):
@@ -78,31 +79,54 @@ class RNAInterActionsPandasInMemory(Dataset):
         return padded_seq_1_embed, padded_seq_2_embed, interaction, row_number
 
 
-def get_dataloader(loader_type: str,
-                          train_set_path: str,
-                          rna_embeddings_path: str,
-                          protein_embeddings_path: str,
-                          seed: int,
-                          **kwargs
-                          ):
-    assert loader_type in ['PandasInMemory'], 'Invalid loader_type specified.'
+def get_dataloader(
+        dataset_path: str,
+        rna_embeddings_path: str,
+        protein_embeddings_path: str,
+        split_set_size: Optional[float] = None,
+        seed: Optional[int] = None,
+        **kwargs
+    ):
+    """
+    Loads interaction dataset from .parquet file and returns two DataLoader objects.
+    When using for training, provide split_set_size and seed to enable random split
+    between training and validation sets.
+    When using for testing, skip the optional arguments.
 
-    set_seed(seed)
+    Args:
+    - dataset_path (str): Path to the dataset file.
+    - rna_embeddings_path (str): Path to the RNA embeddings file.
+    - protein_embeddings_path (str): Path to the protein embeddings file.
+    - split_set_size (float): Size of the validation set. If None, no splitting is done.
+    - seed (int): Seed for reproducibility of the split.
+
+    Returns:
+    train_dataloader (DataLoader): DataLoader object for the training set.
+    valid_dataloader (DataLoader): DataLoader object for the validation set. If split_set_size is None, returns None.
+    """
     
-    if loader_type == 'PandasInMemory':
-        rna_embeddings, protein_embeddings = RNAInterActionsPandasInMemory.pre_load_embeddings(
-            rna_embeddings_path,
-            protein_embeddings_path
-        )
-        train_set = RNAInterActionsPandasInMemory(
-            rna_embeddings,
-            protein_embeddings,
-            train_set_path,
-        )
+    if seed:
+        set_seed(seed)
+    
+    rna_embeddings, protein_embeddings = RNAInterActionsPandasInMemory.pre_load_embeddings(
+        rna_embeddings_path,
+        protein_embeddings_path
+    )
+    dataset = RNAInterActionsPandasInMemory(
+        rna_embeddings,
+        protein_embeddings,
+        dataset_path,
+    )
 
+    if split_set_size is None:
+        return DataLoader(dataset, shuffle=False, **kwargs), None
+    else: 
+        train_set, valid_set = random_split(dataset, [1-split_set_size, split_set_size])
+        
         assert train_set is not None, 'train_set is None. Check if the path is correct.' 
+        assert valid_set is not None, 'valid_set is None. Check if the path is correct.'
 
-        return DataLoader(train_set, shuffle=True, **kwargs)
+        return DataLoader(train_set, shuffle=True, **kwargs), DataLoader(valid_set, shuffle=False, **kwargs)
 
 
 def set_seed(seed):
@@ -123,47 +147,3 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-
-
-def main(args):
-    
-    train_dataloader, valid_dataloader, test_dataloader = get_dataloaders(  loader_type=args.dataloader_type,
-                                                                            train_set_path=args.train_set_path,
-                                                                            rna_embeddings_path=args.rna_embeddings_path,
-                                                                            protein_embeddings_path=args.protein_embeddings_path,
-                                                                            num_workers=args.num_workers,
-                                                                            batch_size=args.batch_size
-                                                                            )
-    total_start = time()
-    for idx, _ in tqdm(enumerate(iter(train_dataloader))):
-        if idx == args.amount - 1:
-            break
-    print(f"Total time: {time() - total_start} for train_dataloader providing batches.")
-
-    total_start = time()
-    for idx, _ in tqdm(enumerate(iter(valid_dataloader))):
-        if idx == args.amount - 1:
-            break
-    print(f"Total time: {time() - total_start} for valid_dataloader providing batches.")
-
-    total_start = time()
-    for idx, _ in tqdm(enumerate(iter(test_dataloader))):
-        if idx == args.amount - 1:
-            break
-    print(f"Total time: {time() - total_start} for test_dataloader providing batches.")
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Dataloader script for RNAProteinInterAct.")
-
-    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
-    parser.add_argument("--amount", type=int, default=20, help="Logging interval")
-    parser.add_argument("--num_workers", type=int, default=1, help="Number of workers")
-    parser.add_argument("--rna_embeddings_path", type=str, default="data/embeddings/rna_embeddings.npy", help="Path to all RNA embeddings")
-    parser.add_argument("--protein_embeddings_path", type=str, default="data/embeddings/protein_embeddings.npy", help="Path to all protein embeddings")
-    parser.add_argument("--train_set_path", type=str, default="data/interactions/train_set.parquet", help="Path to the train set file")
-    parser.add_argument("--dataloader_type", type=str, default=None, help="Type of dataloader")
-
-    args = parser.parse_args()
-
-    
-    main(args)

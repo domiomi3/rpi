@@ -40,14 +40,15 @@ def main(args):
     logger = True
 
     if args.wandb:
-        logger = lightning.pytorch.loggers.WandbLogger(project="RNAProteinInterAct",
-                                                       name=f"{args.wandb_run_name}, seed: {args.seed}")
+        logger = lightning.pytorch.loggers.WandbLogger(
+            project="RNAProteinInterAct",
+            name=f"{args.wandb_run_name}, seed: {args.seed}")
     
     lr_monitor = LearningRateMonitor(logging_interval='step')
     
     checkpoint_callback = ModelCheckpoint(
-        dirpath=args.checkpoint_path,  # Custom path for saving checkpoints
-        filename='{epoch}-{step}--' + f'{args.wandb_run_name}',  # Filename format
+        dirpath=args.checkpoints_dir,  # Custom path for saving checkpoints
+        filename='{epoch}-{step}-' + f"{args.wandb_run_name}-seed={args.seed}",  # Filename format
         monitor='train_loss',  # Metric to monitor for best models
         mode='min',  # Mode for the monitored metric, 'min' for minimization
         save_last=True,  # Save the last checkpoint in addition to the best ones
@@ -56,23 +57,23 @@ def main(args):
     trainer = Trainer(accelerator=args.accelerator,
                       devices=args.devices,
                       max_epochs=args.max_epochs,
-                      max_time=args.max_time,
                       logger=logger,
-                      limit_val_batches=0.0,
+                      # limit_val_batches=0.0,
                       callbacks=[lr_monitor, checkpoint_callback]
                       )
     
-    train_dataloader = get_dataloader(  loader_type=args.dataloader_type,
-                                        train_set_path=args.train_set_path,
-                                        rna_embeddings_path=args.rna_embeddings_path,
-                                        protein_embeddings_path=args.protein_embeddings_path,
-                                        seed=args.seed,
-                                        num_workers=args.num_dataloader_workers,
-                                        batch_size=args.batch_size
+    train_dataloader, val_dataloader = get_dataloader(  
+        dataset_path=args.train_set_path,
+        rna_embeddings_path=args.rna_embeddings_path,
+        protein_embeddings_path=args.protein_embeddings_path,
+        seed=args.seed,
+        split_set_size=args.val_set_size,
+        num_workers=args.num_dataloader_workers,
+        batch_size=args.batch_size
     )
 
-    trainer.fit(lightning_module, train_dataloader)
-
+    trainer.fit(model=lightning_module, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+    
 
 if __name__ == '__main__':
 
@@ -83,10 +84,8 @@ if __name__ == '__main__':
     parser.add_argument("--compiled", action='store_true', default=False, help="Enables Torch compiled Module")
     parser.add_argument("--wandb", action='store_true', default=False, help="Enables logging via wandb")
     parser.add_argument("--wandb_run_name", default="default", help="Name of the wandb run")
+    
     parser.add_argument("--num_encoder_layers", type=int, default=2, help="Number of encoder layers")
-    parser.add_argument("--max_epochs", type=int, default=1, required=True, help="Maximum number of epochs")
-    parser.add_argument("--max_time", default=None, help="Maximum time")
-    parser.add_argument("--num_dataloader_workers", type=int, default=8, help="Number of dataloader workers")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--d_model", type=int, default=20, help="Dimension of model")
     parser.add_argument("--n_head", type=int, default=2, help="Number of heads")
@@ -95,13 +94,16 @@ if __name__ == '__main__':
     parser.add_argument("--weight_decay", type=float, default=0.1, help="Weight decay")
     parser.add_argument("--key_padding_mask", action='store_true', default=False, help="Enables key padding mask")
     parser.add_argument("--lr_init", type=float, default=0.001, help="Initial learning rate")
-    parser.add_argument("--dataloader_type", default="PandasInMemory", help="Type of dataloader")
+    
+    parser.add_argument("--max_epochs", type=int, default=1, required=True, help="Maximum number of epochs")
+    parser.add_argument("--max_time", default=None, help="Maximum time")
+    parser.add_argument("--num_dataloader_workers", type=int, default=8, help="Number of dataloader workers")
     parser.add_argument("--protein_embeddings_path", default="data/embeddings/protein_embeddings.npy", help="Path to protein embeddings")
     parser.add_argument("--rna_embeddings_path", default="data/embeddings/rna_embeddings.npy", help="Path to RNA embeddings")
     parser.add_argument("--train_set_path", default='data/interactions/train_set.parquet', help="Path to the train set file")
-    parser.add_argument("--test_set_path", default='data/interactions/test_set.parquet', help="Path to the test set file")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
-    parser.add_argument("--checkpoint_path", default="checkpoints", help="Path to the checkpoints")
+    parser.add_argument("--checkpoints_dir", default="checkpoints", help="Path to the checkpoints")
+    parser.add_argument("--val_set_size", type=float, default=0.2, help="Size of the validation set")
 
     args = parser.parse_args()
 

@@ -28,3 +28,4 @@ fair-esm
 h5py
 rna-fm
 submitit
+seaborn

@@ -172,5 +172,6 @@ checkpoints/
 .DS_Store
 
 RNAProteinInteractions/
+test_results/
 
 submit_array.py
