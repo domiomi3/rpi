@@ -131,3 +131,50 @@ python dataset/embeddings/one_hot_encoding.py --sequence_type protein
 python src/train_and_eval.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --max_epochs 1 --one_hot_encoding
 
 python src/test.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10908-test-seed=6.ckpt
+
+
+HPO:
+run job with run_hpo.sh and indicated max budget and save dir for neps. 
+will use hyperband by defaulta and 3,30 min max budgets
+python src/hpo.py --max_budget 90 --results_dir "neps_results/esm_rnafm"
+        self.one_hot_encoding = False
+        self.loader_type = "RPIDataset"
+        self.embedding_type = "esm_rnafm"
+        self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
+        self.rna_embeddings_path = "data/embeddings/rna_embeddings.npy"
+        self.train_set_path = "data/interactions/train_set.parquet"
+
+ABLATION STUDIES:
+hpo: 
+1. one_hot: replace rna, protein embeddigns paths, change embedding type and set one_hot_encoding flag to True create new dir
+
+        self.one_hot_encoding = True
+        self.loader_type = "RPIDataset"
+        self.embedding_type = "one_hot"
+        self.protein_embeddings_path = "data/embeddings/one_hot_protein.npy"
+        self.rna_embeddings_path = "data/embeddings/one_hot_rna.npy"
+
+python src/hpo.py --max_budget 90 --results_dir "neps_results/one_hot"
+
+2. rand rna: protein and rna embeddings same as with esm_rna_fm, change loader type!!! to RPIDatasetRNARand, change embeddig type, one-hot_encodign flag back to false        
+    self.one_hot_encoding = False
+    self.loader_type = "RPIDatasetRNARand"
+    self.embedding_type = "rna_rand"
+    self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
+    self.rna_embeddings_path = "data/embeddings/rna_embeddings.npy"
+    self.train_set_path = "data/interactions/train_set.parquet"
+
+python src/hpo.py --max_budget 90 --results_dir "neps_results/r_rand"
+
+create new dir and run run_hpo
+3. rand protein change loader type to RPIDatasetProteinRand, change embedding type
+create new directory and run run_hpo.sh
+    self.one_hot_encoding = False
+
+        self.loader_type = "RPIDatasetProteinRand"
+        self.embedding_type = "protein_rand"
+        self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
+        self.rna_embeddings_path = "data/embeddings/rna_embeddings.npy"
+        self.train_set_path = "data/interactions/train_set.parquet"
+        
+python src/hpo.py --max_budget 90 --results_dir "neps_results/p_rand"

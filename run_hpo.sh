@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=1-00:00:00
 #SBATCH --mem=100000mb
-#SBATCH --job-name=test_one_hot
+#SBATCH --job-name=hpo_p_rand
 #SBATCH --chdir=/work/dlclarge1/matusd-rpi/RPI
 #SBATCH --output="LOGS//%x.%N.%A.%a.out"
 #SBATCH --error="LOGS//%x.%N.%A.%a.err"
@@ -22,24 +22,4 @@ workdir=/work/dlclarge1/matusd-rpi/RPI
 
 cd "$workdir"
 
-python src/train_and_eval.py \
---accelerator gpu \
---devices 1 \
---wandb \
---wandb_run_name test \
---num_encoder_layers 1 \
---max_epochs 1 \
---num_dataloader_workers 8 \
---batch_size 8 \
---d_model 20 \
---n_head 2 \
---dim_feedforward 20 \
---dropout 0.21759085167606332 \
---weight_decay 0.00022637229697395497 \
---key_padding_mask \
---lr_init 0.00001923730509654649 \
---protein_embeddings_path data/embeddings/one_hot_protein.npy \
---rna_embeddings_path data/embeddings/one_hot_rna.npy \
---train_set_path data/interactions/train_set.parquet \
---seed 6 \
---one_hot_encoding \
+python src/hpo.py

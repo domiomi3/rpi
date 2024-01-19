@@ -114,7 +114,7 @@ class ModelWrapper(LightningModule):
         self.test_metrics.reset()
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
+        optimizer = optim.AdamW(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
         return optimizer
 
     def _shared_eval(self, batch):
