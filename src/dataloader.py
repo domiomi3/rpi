@@ -1,4 +1,3 @@
-import argparse
 import random
 import os
 
@@ -8,16 +7,15 @@ import pandas as pd
 import numpy as np
 
 from time import time
-from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, random_split
 from typing import Optional
 
 
-class RNAInterActionsPandasInMemory(Dataset):
+class RPIDataset(Dataset):
     """
     Loads Pandas Dataframe and reads embeddings from storage when needed.
-    Recommended for using on cluster. Be aware that its usage needs a lot of system memory (RAM) since all embeddings
-    have to be preloaded into memory.
+    Recommended for using on cluster. Be aware that its usage needs a lot of 
+    system memory (RAM) since all embeddings have to be preloaded into memory.
     """
     def __init__(self,
                  rna_embeddings: np.array,
@@ -55,8 +53,8 @@ class RNAInterActionsPandasInMemory(Dataset):
     def pre_load_embeddings(
             rna_embeddings_path: str,
             protein_embeddings_path: str, ):
-        return (RNAInterActionsPandasInMemory.pre_load_rna_embeddings(rna_embeddings_path),
-                RNAInterActionsPandasInMemory.pre_load_protein_embeddings(protein_embeddings_path))
+        return (RPIDataset.pre_load_rna_embeddings(rna_embeddings_path),
+                RPIDataset.pre_load_protein_embeddings(protein_embeddings_path))
 
     def __len__(self) -> int:
         return self.length
@@ -79,7 +77,48 @@ class RNAInterActionsPandasInMemory(Dataset):
         return padded_seq_1_embed, padded_seq_2_embed, interaction, row_number
 
 
+class RPIDatasetRNARand(RPIDataset):
+    """
+    Data Loader Class for ablation experiment.
+    Replaces the RNA input with a random tensor.
+    However, keeps the padded zero values and generates random values within 
+    the range (min, max) of the original tensor.
+    """
+    def __getitem__(self, index):
+        padded_seq_1_embed, padded_seq_2_embed, interacts, rna_inter_id = super().__getitem__(index)
+        
+        # Replace sequence by random
+        non_zero_indices = padded_seq_1_embed.nonzero()
+        random_values = (padded_seq_1_embed.min() - padded_seq_1_embed.max()) * torch.rand(
+            non_zero_indices[0].shape[0]) + padded_seq_1_embed.max()
+        padded_random_seq_1 = padded_seq_1_embed.copy()
+        padded_random_seq_1[non_zero_indices] = random_values
+
+        return padded_random_seq_1, padded_seq_2_embed, interacts, rna_inter_id
+
+
+class RPIDatasetProteinRand(RPIDataset):
+    """
+    Data Loader Class for ablation experiment.
+    Replaces the protein input with a random tensor.
+    However, keeps the padded zero values and generates random values within 
+    the range (min, max) of the original tensor.
+    """
+    def __getitem__(self, index):
+        padded_seq_1_embed, padded_seq_2_embed, interacts, rna_inter_id = super().__getitem__(index)
+        
+        # Replace sequence by random
+        non_zero_indices = padded_seq_2_embed.nonzero()
+        random_values = (padded_seq_2_embed.min() - padded_seq_2_embed.max()) * torch.rand(
+            non_zero_indices[0].shape[0]) + padded_seq_2_embed.max()
+        padded_random_seq_2 = padded_seq_2_embed.copy()
+        padded_random_seq_2[non_zero_indices] = random_values
+
+        return padded_seq_1_embed, padded_random_seq_2, interacts, rna_inter_id
+
+
 def get_dataloader(
+        loader_type: str,
         dataset_path: str,
         rna_embeddings_path: str,
         protein_embeddings_path: str,
@@ -94,6 +133,8 @@ def get_dataloader(
     When using for testing, skip the optional arguments.
 
     Args:
+    - loader_type (str): Type of dataloader to be used. Can be one of 
+    ['RPIDatasetProteinRand', 'RPIDatasetRNARand', 'PandasInMemory'].
     - dataset_path (str): Path to the dataset file.
     - rna_embeddings_path (str): Path to the RNA embeddings file.
     - protein_embeddings_path (str): Path to the protein embeddings file.
@@ -104,19 +145,34 @@ def get_dataloader(
     train_dataloader (DataLoader): DataLoader object for the training set.
     valid_dataloader (DataLoader): DataLoader object for the validation set. If split_set_size is None, returns None.
     """
-    
+    assert loader_type in ['RPIDatasetProteinRand', 'RPIDatasetRNARand', 'RPIDataset',
+                           ], 'Invalid loader_type specified.'
     if seed:
         set_seed(seed)
     
-    rna_embeddings, protein_embeddings = RNAInterActionsPandasInMemory.pre_load_embeddings(
+    rna_embeddings, protein_embeddings = RPIDataset.pre_load_embeddings(
         rna_embeddings_path,
         protein_embeddings_path
     )
-    dataset = RNAInterActionsPandasInMemory(
-        rna_embeddings,
-        protein_embeddings,
-        dataset_path,
-    )
+
+    if loader_type == 'RPIDatasetProteinRand':
+        dataset = RPIDatasetProteinRand(
+            rna_embeddings,
+            protein_embeddings,
+            dataset_path,
+        )
+    elif loader_type == 'RPIDatasetRNARand':
+        dataset = RPIDatasetRNARand(
+            rna_embeddings,
+            protein_embeddings,
+            dataset_path,
+        )
+    elif loader_type == 'RPIDataset':
+        dataset = RPIDataset(
+            rna_embeddings,
+            protein_embeddings,
+            dataset_path,
+        )
 
     if split_set_size is None:
         return DataLoader(dataset, shuffle=False, **kwargs), None
