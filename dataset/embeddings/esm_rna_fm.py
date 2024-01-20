@@ -19,7 +19,7 @@ sys.path.append(str(src_dir))
 from utils import divide_dataframe
 
 
-def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, max_task_id, task_id):
+def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, max_task_id, task_id, if_inference):
     """
     Create and save embeddings for sequences using a specified model (RNA-FM or ESM-2).
 
@@ -31,11 +31,13 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
     - repr_layer (int): Representation layer index.
     - max_task_id (int): Maximum task ID for data splitting.
     - task_id (int): Current task ID.
+    - inference (bool): Whether to print additional information.
 
     Returns:
     - None
     """
-    print(f"Running with task id {task_id} and max task id {max_task_id}")
+    if not if_inference:
+        print(f"Running with task id {task_id} and max task id {max_task_id}")
     df = pd.read_parquet(data_path, engine='pyarrow')
 
     # Split data across multiple tasks
@@ -44,7 +46,8 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
         print("No data to process.")
         return
     
-    print(f"Creating embeddings for {len(data_batch)} sequences out of {df.shape[0]}")
+    if not if_inference:
+        print(f"Creating embeddings for {len(data_batch)} sequences out of {df.shape[0]}")
 
     # Load the specified model
     if model_type == 'rna_fm':
@@ -99,7 +102,8 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
 
         timings.append(time() - start)
 
-    print(f"Average time per sequence embedding extraction: {mean(timings):.4f}")
+    if not if_inference:
+        print(f"Average time per sequence embedding extraction: {mean(timings):.4f}")
 
 
 def merge_embeddings(emb_dir, model_type):
@@ -153,7 +157,8 @@ if __name__ == '__main__':
     parser.add_argument('--working_dir', type=str, default='/work/dlclarge1/matusd-rpi/RPI', help='Working directory path.')
     parser.add_argument('--emb_dir', type=str, default="data/embeddings", help='Directory to save the results')
     parser.add_argument('--model_type', type=str, choices=['rna_fm', 'esm2'], required=True, help='Type of model to use (rna_fm or esm2)')
-    
+    parser.add_argument('--if_inference', action='store_true', default=False, help='Hides logging info during inference')
+                        
     args = parser.parse_args()
 
     os.chdir(args.working_dir)

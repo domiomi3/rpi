@@ -28,7 +28,8 @@ class ModelWrapper(LightningModule):
     def __init__(self, model, lr_init, weight_decay, seed):
         super().__init__()
         self.save_hyperparameters()  # for reconstructing model from checkpoint
-        seed_everything(seed)
+        if seed:
+            seed_everything(seed)
         
         self.model = model
         self.loss_metric = torch.nn.BCELoss()
@@ -534,31 +535,6 @@ class RNAProteinEncoderLayer(Module):
                            key_padding_mask=key_padding_mask,
                            need_weights=True, is_causal=is_causal)[0]
         return self.dropout2_2(x)
-
-
-class BaseLinear(Module):
-    """
-    Baseline model based on linear layers.
-    IDEA: improve model with NAS & HPO :-)
-    """
-    def __init__(self, d_model, *args, **factory_kwargs):
-        # Implementation of Feedforward model
-        super().__init__(*args, **factory_kwargs)
-        self.linear1 = Linear(d_model, d_model // 8, **factory_kwargs)
-        # self.linear2 = Linear(d_model // 2, d_model // 4)
-        # self.linear3 = Linear(d_model // 4, d_model // 8)
-        self.linear4 = Linear(d_model // 8, d_model // 16)
-        self.linear5 = Linear(d_model // 16, 1)
-        self.activation = torch.relu
-
-    def forward(self, x_1, x_2):
-        x = torch.cat((x_1, x_2), 1)
-        x = self.activation(self.linear1(x))
-        # x = self.activation(self.linear2(x))
-        # x = self.activation(self.linear3(x))
-        x = self.activation(self.linear4(x))
-        x = torch.sigmoid(self.linear5(x))
-        return x.mean(dim=1)
 
 
 class BaseCNN(Module):
