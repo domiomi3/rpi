@@ -76,7 +76,6 @@ def main():
 
     # Generate embedding for protein
     model = "esm2"
-    repr_layer = 30
     esm_dir = os.path.join(config.emb_dir, 'esm')
     
     print("Generating embedding for protein...")
@@ -86,7 +85,6 @@ def main():
         data_path=protein_path,
         model_type=model, 
         enable_cuda=config.enable_cuda, 
-        repr_layer=repr_layer,
         max_task_id=config.max_task_id,
         task_id=config.task_id,
         if_inference=True
@@ -102,7 +100,6 @@ def main():
 
     # Generate embedding for RNA
     model = "rna_fm"
-    repr_layer = 12
     rna_fm_dir = os.path.join(config.emb_dir, 'rna_fm')
 
     print("Generating embedding for RNA...")
@@ -112,7 +109,6 @@ def main():
         data_path=rna_path,
         model_type=model, 
         enable_cuda=config.enable_cuda, 
-        repr_layer=repr_layer,
         max_task_id=config.max_task_id,
         task_id=config.task_id,
         if_inference=True

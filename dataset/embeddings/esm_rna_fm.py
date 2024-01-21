@@ -19,7 +19,7 @@ sys.path.append(str(src_dir))
 from utils import divide_dataframe
 
 
-def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, max_task_id, task_id, if_inference):
+def create_embeddings(emb_dir, data_path, model_type, enable_cuda, max_task_id, task_id, if_inference):
     """
     Create and save embeddings for sequences using a specified model (RNA-FM or ESM-2).
 
@@ -28,10 +28,9 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
     - data_path (str): Path to the data file (RNA or protein data).
     - model_type (str): Type of model ('rna_fm' or 'esm2').
     - enable_cuda (bool): Whether to use CUDA.
-    - repr_layer (int): Representation layer index.
     - max_task_id (int): Maximum task ID for data splitting.
     - task_id (int): Current task ID.
-    - inference (bool): Whether to print additional information.
+    - if_inference (bool): Whether to print additional information.
 
     Returns:
     - None
@@ -53,9 +52,11 @@ def create_embeddings(emb_dir, data_path, model_type, enable_cuda, repr_layer, m
     if model_type == 'rna_fm':
         model, alphabet = fm.pretrained.rna_fm_t12()
         idx = '1'
+        repr_layer = 12
     elif model_type == 'esm2':
         model, alphabet = esm.pretrained.esm2_t30_150M_UR50D()
         idx = '2'
+        repr_layer = 30
     else:
         raise ValueError("Invalid model type. Choose 'rna_fm' or 'esm2'.")
 
@@ -150,7 +151,6 @@ if __name__ == '__main__':
 
     parser.add_argument('--enable_cuda', type=bool, default=False, help='Enable or disable CUDA')
     parser.add_argument('--unique_seq_path', type=str, default="data/annotations/unique_rna.parquet", help='Path to the unique sequence data')
-    parser.add_argument('--repr_layer', type=int, help='Representation layer to extract embeddings from. Set to 30 for ESM-2, 12 for RNA-FM')
     parser.add_argument('--max_task_id', type=int, default=20, help='Maximum task ID')
     parser.add_argument('--task_id', type=int, default=1, help='Task ID')
     parser.add_argument('--working_dir', type=str, default='/work/dlclarge1/matusd-rpi/RPI', help='Working directory path.')
@@ -163,17 +163,15 @@ if __name__ == '__main__':
     os.chdir(args.working_dir)
 
     if args.model_type == 'rna_fm':
-        args.repr_layer = 12
         rna_fm_dir = os.path.join(args.emb_dir, "rna_fm")
 
-        create_embeddings(rna_fm_dir, args.unique_seq_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id, args.if_inference)
+        create_embeddings(rna_fm_dir, args.unique_seq_path, args.model_type, args.enable_cuda, args.max_task_id, args.task_id, args.if_inference)
         merge_embeddings(rna_fm_dir, args.model_type)
 
     elif args.model_type == 'esm2':
-        args.repr_layer = 30
         esm_dir = os.path.join(args.emb_dir, "esm")
 
-        create_embeddings(esm_dir, args.unique_seq_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id, args.if_inference)
+        create_embeddings(esm_dir, args.unique_seq_path, args.model_type, args.enable_cuda, args.max_task_id, args.task_id, args.if_inference)
         merge_embeddings(esm_dir, args.model_type)
 
     else:
