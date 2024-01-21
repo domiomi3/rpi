@@ -149,8 +149,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--enable_cuda', type=bool, default=False, help='Enable or disable CUDA')
-    parser.add_argument('--rna_path', type=str, default="data/annotations/unique_rna.parquet", help='Path to the RNA data (for RNA-FM model)')
-    parser.add_argument('--protein_path', type=str, default="data/annotations/unique_proteins.parquet", help='Path to the protein data (for ESM-2 model)')
+    parser.add_argument('--unique_seq_path', type=str, default="data/annotations/unique_rna.parquet", help='Path to the unique sequence data')
     parser.add_argument('--repr_layer', type=int, help='Representation layer to extract embeddings from. Set to 30 for ESM-2, 12 for RNA-FM')
     parser.add_argument('--max_task_id', type=int, default=20, help='Maximum task ID')
     parser.add_argument('--task_id', type=int, default=1, help='Task ID')
@@ -167,14 +166,14 @@ if __name__ == '__main__':
         args.repr_layer = 12
         rna_fm_dir = os.path.join(args.emb_dir, "rna_fm")
 
-        create_embeddings(rna_fm_dir, args.rna_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id)
+        create_embeddings(rna_fm_dir, args.unique_seq_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id, args.if_inference)
         merge_embeddings(rna_fm_dir, args.model_type)
 
     elif args.model_type == 'esm2':
         args.repr_layer = 30
         esm_dir = os.path.join(args.emb_dir, "esm")
 
-        create_embeddings(esm_dir, args.protein_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id)
+        create_embeddings(esm_dir, args.unique_seq_path, args.model_type, args.enable_cuda, args.repr_layer, args.max_task_id, args.task_id, args.if_inference)
         merge_embeddings(esm_dir, args.model_type)
 
     else:

@@ -7,17 +7,19 @@ from lightning import Trainer
 from model import ModelWrapper
 from dataloader import get_dataloader
 
-
 def main(args):
 
     test_results_dir = os.path.join(os.getcwd(), 'test_results')
     if not os.path.exists(test_results_dir):
         os.makedirs(test_results_dir)
     
+    breakpoint()
     model = ModelWrapper.load_from_checkpoint(
         checkpoint_path=args.checkpoint_path,
         map_location=torch.device('cpu') if args.device == 'cpu' else torch.device('cuda')
     )
+    
+    model.eval()
     
     test_dataloader, _ = get_dataloader(
         loader_type=args.loader_type,

@@ -133,7 +133,7 @@ python src/train_and_eval.py --protein_embeddings_path data/embeddings/one_hot_p
 python src/test.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10908-test-seed=6.ckpt
 
 
-HPO:
+HPO (seed=150):
 run job with run_hpo.sh and indicated max budget and save dir for neps. 
 will use hyperband by defaulta and 3,30 min max budgets
 python src/hpo.py --max_budget 90 --results_dir "neps_results/esm_rnafm"
@@ -176,5 +176,34 @@ create new directory and run run_hpo.sh
         self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
         self.rna_embeddings_path = "data/embeddings/rna_embeddings.npy"
         self.train_set_path = "data/interactions/train_set.parquet"
-        
+
 python src/hpo.py --max_budget 90 --results_dir "neps_results/p_rand"
+
+4. baseline
+create ne directory
+self.baseline = True
+    self.one_hot_encoding = False
+        self.loader_type = "RPIDataset"
+        self.embedding_type = "baseline"
+        self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
+        self.rna_embeddings_path = "data/embeddings/rna_embeddings.npy"
+        self.train_set_path = "data/interactions/train_set.parquet"
+
+python src/hpo.py --max_budget 90 --results_dir "neps_results/baseline"
+
+RPI2825
+create test set
+run dataset/create_rpi2825_test_set.ipynb
+- rpi test sets
+- unique embeddings
+
+create embeddigns
+
+PROTEIN
+python dataset/embeddings/esm_rna_fm.py --unique_seq_path data/annotations/rpi2825_unique_proteins.parquet --max_task_id 1 --task_id 1 --working_dir /work/dlclarge1/matusd-rpi/RPI --emb_dir data/embeddings/rpi2825 --model_type esm2
+
+RNA
+python dataset/embeddings/esm_rna_fm.py --unique_seq_path data/annotations/rpi2825_unique_rna.parquet --max_task_id 1 --task_id 1 --working_dir /work/dlclarge1/matusd-rpi/RPI --emb_dir data/embeddings/rpi2825 --model_type rna_fm
+
+test model
+python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/epoch=47-step=654480-esm_rna_fm-seed=4623.ckpt --device gpu
