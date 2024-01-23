@@ -20,14 +20,14 @@ class RPIDataset(Dataset):
     def __init__(self,
                  rna_embeddings: np.array,
                  protein_embeddings: np.array,
-                 train_set_path: str
+                 dataset_path: str,
                  ):
-        self.train_set = pd.read_parquet(train_set_path, engine='pyarrow')
-        self.train_set = self.train_set.assign(row_number=range(len(self.train_set)))
+        self.dataset = pd.read_parquet(dataset_path, engine='pyarrow')
+        self.dataset = self.dataset.assign(row_number=range(len(self.dataset)))
 
         self.protein_embeddings = protein_embeddings
         self.rna_embeddings = rna_embeddings
-        self.length = self.train_set.shape[0]
+        self.length = self.dataset.shape[0]
 
     @staticmethod
     def pre_load_rna_embeddings(
@@ -62,7 +62,7 @@ class RPIDataset(Dataset):
     def __getitem__(self, index):
 
         # Get entry information
-        row = self.train_set[self.train_set['row_number'] == index][
+        row = self.dataset[self.dataset['row_number'] == index][
             ['Sequence_1_emb_ID', 'Sequence_2_emb_ID', 'interaction', 'row_number']]
         assert row.shape[0] == 1
 
@@ -122,8 +122,8 @@ def get_dataloader(
         dataset_path: str,
         rna_embeddings_path: str,
         protein_embeddings_path: str,
-        split_set_size: Optional[float] = None,
         seed: Optional[int] = None,
+        shuffle: bool = True,
         **kwargs
     ):
     """
@@ -138,12 +138,11 @@ def get_dataloader(
     - dataset_path (str): Path to the dataset file.
     - rna_embeddings_path (str): Path to the RNA embeddings file.
     - protein_embeddings_path (str): Path to the protein embeddings file.
-    - split_set_size (float): Size of the validation set. If None, no splitting is done.
     - seed (int): Seed for reproducibility of the split.
+    - shuffle (bool): Whether to shuffle the dataset.
 
     Returns:
-    train_dataloader (DataLoader): DataLoader object for the training set.
-    valid_dataloader (DataLoader): DataLoader object for the validation set. If split_set_size is None, returns None.
+    dataset_dataloader (DataLoader): DataLoader object for the dataset.
     """
     assert loader_type in ['RPIDatasetProteinRand', 'RPIDatasetRNARand', 'RPIDataset',
                            ], 'Invalid loader_type specified.'
@@ -173,17 +172,8 @@ def get_dataloader(
             protein_embeddings,
             dataset_path,
         )
-
-    if split_set_size is None:
-        return DataLoader(dataset, shuffle=False, **kwargs), None
-    else: 
-        train_set, valid_set = random_split(dataset, [1-split_set_size, split_set_size])
-        
-        assert train_set is not None, 'train_set is None. Check if the path is correct.' 
-        assert valid_set is not None, 'valid_set is None. Check if the path is correct.'
-
-        return DataLoader(train_set, shuffle=True, **kwargs), DataLoader(valid_set, shuffle=False, **kwargs)
-
+    return DataLoader(dataset, shuffle=shuffle, **kwargs)
+  
 
 def set_seed(seed):
     """

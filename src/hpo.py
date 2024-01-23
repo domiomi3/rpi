@@ -12,29 +12,30 @@ from lightning import Trainer
 
 src_dir = Path.cwd().parent
 sys.path.append(str(src_dir))
-from model import RNAProteinInterAct, RNAProteinInterActSE, ModelWrapper
+from model import RNAProteinInterAct, RNAProteinInterActSE, BaseCNN, ModelWrapper
 from dataloader import get_dataloader
 
 
 class Config:
     def __init__(self, **kwargs):
-        self.d_model = 20
+        self.d_model = 2048
         self.n_head = 2
         self.dim_feedforward = 20
         self.num_encoder_layers = 1
         self.key_padding_mask = True
-        self.accelerator = 'gpu'
+        self.accelerator = 'cuda'
         self.devices = 1
-        self.batch_size = 8
+        self.batch_size = 16
         self.one_hot_encoding = False
+        self.baseline = False
         self.num_dataloader_workers = 8
         self.seed = 150
-        self.val_set_size = 0.2
         self.loader_type = "RPIDataset"
-        self.embedding_type = "esm_rnafm"
+        self.embedding_type = "new_esm_rnafm"
         self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
         self.rna_embeddings_path = "data/embeddings/rna_embeddings.npy"
         self.train_set_path = "data/interactions/train_set.parquet"
+        self.val_set_path = "data/interactions/validation_set.parquet"
         self.__dict__.update(kwargs)
 
 
@@ -58,20 +59,27 @@ def train_and_eval(pipeline_directory, previous_pipeline_directory, weight_decay
     if config.one_hot_encoding:
         model = RNAProteinInterActSE
     else:
-        model = RNAProteinInterAct
+        if config.baseline:
+            rpi_model = BaseCNN(
+                d_model=config.d_model,
+                device=config.accelerator
+            )
+        else:
+            model = RNAProteinInterAct
 
-    # Initialize model
-    rpi_model = model( 
-        batch_first=True,
-        embed_dim=640,
-        d_model=config.d_model,
-        num_encoder_layers=config.num_encoder_layers,
-        nhead=config.n_head,
-        dim_feedforward=config.dim_feedforward,
-        key_padding_mask=config.key_padding_mask,
-        norm_first=True,
-        dropout=dropout
-    )
+    if not config.baseline:
+        # Initialize model
+        rpi_model = model( 
+            batch_first=True,
+            embed_dim=640,
+            d_model=config.d_model,
+            num_encoder_layers=config.num_encoder_layers,
+            nhead=config.n_head,
+            dim_feedforward=config.dim_feedforward,
+            key_padding_mask=config.key_padding_mask,
+            norm_first=True,
+            dropout=dropout
+        )
 
     # Wrap the model in a Lightning module
     lightning_module = ModelWrapper(
@@ -119,15 +127,26 @@ def train_and_eval(pipeline_directory, previous_pipeline_directory, weight_decay
     )
 
     # Get dataloaders
-    train_dataloader, val_dataloader = get_dataloader(  
+    train_dataloader = get_dataloader(  
         loader_type=config.loader_type,
         dataset_path=config.train_set_path,
         rna_embeddings_path=config.rna_embeddings_path,
         protein_embeddings_path=config.protein_embeddings_path,
         seed=config.seed,
-        split_set_size=config.val_set_size,
         num_workers=config.num_dataloader_workers,
-        batch_size=config.batch_size
+        batch_size=config.batch_size,
+        shuffle=True
+    )
+
+    val_dataloader = get_dataloader(  
+        loader_type=config.loader_type,
+        dataset_path=config.val_set_path,
+        rna_embeddings_path=config.rna_embeddings_path,
+        protein_embeddings_path=config.protein_embeddings_path,
+        seed=config.seed,
+        num_workers=config.num_dataloader_workers,
+        batch_size=config.batch_size,
+        shuffle=False
     )
 
     # Train model

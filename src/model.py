@@ -16,7 +16,7 @@ from torch.nn import Dropout
 from torch.nn import Linear
 from torch.nn import LayerNorm
 from torch.nn import Conv1d, Conv2d
-from lightning import LightningModule
+from lightning import LightningModule 
 from lightning import seed_everything
 
 from torchmetrics import MetricCollection
@@ -540,19 +540,25 @@ class RNAProteinEncoderLayer(Module):
 class BaseCNN(Module):
     """
         Baseline model based on convolutional layers.
-        IDEA: improve model with NAS & HPO :-)
         """
-    def __init__(self, d_model, *args, **factory_kwargs):
+    def __init__(self, d_model = 2048, scaling_factor1 = 16, scaling_factor2 = 8, 
+                 device="cpu", *args, **factory_kwargs):
         super().__init__(*args, **factory_kwargs)
-        self.conv1 = Conv1d(d_model, d_model // 16, 1)
-        self.linear1 = Linear(640, 640 // 8)
-        self.linear2 = Linear(640 // 8, 1)
+        self.to(device)
+        out_dim_conv = d_model // scaling_factor1
+        in_dim_linear = out_dim_conv * 640
+        out_dim_linear = out_dim_conv // scaling_factor2
+
+        self.conv1 = Conv1d(d_model, out_dim_conv, 1)
+        self.linear1 = Linear(in_dim_linear, out_dim_linear)
+        self.linear2 = Linear(out_dim_linear, 1)
         self.activation = torch.relu
 
     def forward(self, x_1, x_2):
         x = torch.cat((x_1, x_2), 1)
         x = self.activation(self.conv1(x))
-        x = self.activation(self.linear1(x))
+        x = x.flatten(start_dim=1)
+        x = self.activation(self.linear1(x))        
         x = torch.sigmoid(self.linear2(x))
         return x.mean(dim=1)
 

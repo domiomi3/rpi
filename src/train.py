@@ -6,7 +6,7 @@ import lightning.pytorch.loggers
 from pathlib import Path
 
 from lightning import Trainer
-from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 src_dir = Path.cwd().parent
 sys.path.append(str(src_dir))
@@ -43,22 +43,26 @@ def main(args):
         seed=args.seed,
     )
     
+    full_exp_name = f"{args.wandb_run_name}, lr: {args.lr_init}, \
+            wd: {args.weight_decay}, dr: {args.dropout}, seed: {args.seed}"
+    
     # Initialize logger
     if args.wandb:
         logger = lightning.pytorch.loggers.WandbLogger(
-            project="RNAProteinInterAct",
-            name=f"{args.wandb_run_name}, seed: {args.seed}")
+            project="RPI",
+            name=full_exp_name)
     else:
         logger = True
 
     # Initialize checkpoint callback to save best models        
     checkpoint_callback = ModelCheckpoint(
         dirpath=args.checkpoints_dir,  # Custom path for saving checkpoints
-        filename='{epoch}-{step}-' + f"{args.wandb_run_name}-seed={args.seed}",  # Filename format
+        filename='{epoch}-' + full_exp_name,  # Filename format
         monitor='train_loss',  # Metric to monitor for best models
         mode='min',  # Mode for the monitored metric, 'min' for minimization
         save_last=True,  # Save the last checkpoint in addition to the best ones
     )
+    checkpoint_callback.CHECKPOINT_NAME_LAST = "last-" + full_exp_name
 
     # Initialize trainer 
     trainer = Trainer(
@@ -70,20 +74,20 @@ def main(args):
     )
     
     # Get train dataloader (val is redundant outside of HPO experiments)
-    train_dataloader, _ = get_dataloader(  
+    train_dataloader = get_dataloader(  
         loader_type=args.loader_type,
         dataset_path=args.train_set_path,
         rna_embeddings_path=args.rna_embeddings_path,
         protein_embeddings_path=args.protein_embeddings_path,
         seed=args.seed,
-        split_set_size=args.val_set_size,
         num_workers=args.num_dataloader_workers,
         batch_size=args.batch_size
     )
 
     # Train model
     trainer.fit(model=lightning_module, train_dataloaders=train_dataloader)
-    
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Command line options for the script")
@@ -94,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument("--wandb_run_name", default="default", help="Name of the wandb run")
     
     parser.add_argument("--one_hot_encoding", action='store_true', default=False, help="Enables one-hot encoding")
-    parser.add_argument("--num_encoder_layers", type=int, default=2, help="Number of encoder layers")
+    parser.add_argument("--num_encoder_layers", type=int, default=1, help="Number of encoder layers")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--d_model", type=int, default=20, help="Dimension of model")
     parser.add_argument("--n_head", type=int, default=2, help="Number of heads")
@@ -109,10 +113,9 @@ if __name__ == '__main__':
     parser.add_argument("--num_dataloader_workers", type=int, default=8, help="Number of dataloader workers")
     parser.add_argument("--protein_embeddings_path", default="data/embeddings/protein_embeddings.npy", help="Path to protein embeddings")
     parser.add_argument("--rna_embeddings_path", default="data/embeddings/rna_embeddings.npy", help="Path to RNA embeddings")
-    parser.add_argument("--train_set_path", default='data/interactions/short_train_set.parquet', help="Path to the train set file")
+    parser.add_argument("--train_set_path", default="data/interactions/short_train_set.parquet", help="Path to the train set file")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
     parser.add_argument("--checkpoints_dir", default="checkpoints", help="Path to the checkpoints")
-    parser.add_argument("--val_set_size", type=float, default=0, help="Size of the validation set")
 
     args = parser.parse_args()
 

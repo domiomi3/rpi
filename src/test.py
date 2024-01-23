@@ -13,7 +13,6 @@ def main(args):
     if not os.path.exists(test_results_dir):
         os.makedirs(test_results_dir)
     
-    breakpoint()
     model = ModelWrapper.load_from_checkpoint(
         checkpoint_path=args.checkpoint_path,
         map_location=torch.device('cpu') if args.device == 'cpu' else torch.device('cuda')
@@ -21,7 +20,7 @@ def main(args):
     
     model.eval()
     
-    test_dataloader, _ = get_dataloader(
+    test_dataloader = get_dataloader(
         loader_type=args.loader_type,
         dataset_path=args.test_set_path,
         rna_embeddings_path=args.rna_embeddings_path,
