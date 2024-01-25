@@ -176,3 +176,5 @@ test_results/
 neps_results/
 
 submit_array.py
+
+*.sh

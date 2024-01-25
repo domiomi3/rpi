@@ -121,7 +121,9 @@ python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_uniq
 
 python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_unique_proteins.parquet --emb_dir data/embeddings/rpi2825 --model_type esm2 --max_task_id 1 (15 min)
 
-python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10893-esm_rna_fm-seed=6.ckpt
+python src/test.py --rna_embeddings_path data/embeddings/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/test_set.parquet --checkpoint_path checkpoints/last-v13.ckpt
+
+python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/epoch=60-step=648186-new_d_esm_rna_fm-seed=6844.ckpt
 
 ## one-hot encoding
 python dataset/embeddings/one_hot_encoding.py --sequence_type rna
@@ -130,7 +132,8 @@ python dataset/embeddings/one_hot_encoding.py --sequence_type protein
 
 python src/train_and_eval.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --max_epochs 1 --one_hot_encoding
 
-python src/test.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/test_set.parquet --checkpoint_path checkpoints/epoch=0-step=10908-test-seed=6.ckpt
+one
+python src/test.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/test_set.parquet --checkpoint_path checkpoints/last_esm_d_rna_fm.ckpt
 
 
 HPO (seed=150):
@@ -181,8 +184,9 @@ python src/hpo.py --max_budget 90 --results_dir "neps_results/p_rand"
 
 4. baseline
 create ne directory
-self.baseline = True
-    self.one_hot_encoding = False
+        self.d_model = 2048
+        self.baseline = True
+        self.one_hot_encoding = False
         self.loader_type = "RPIDataset"
         self.embedding_type = "baseline"
         self.protein_embeddings_path = "data/embeddings/protein_embeddings.npy"
@@ -206,4 +210,4 @@ RNA
 python dataset/embeddings/esm_rna_fm.py --unique_seq_path data/annotations/rpi2825_unique_rna.parquet --max_task_id 1 --task_id 1 --working_dir /work/dlclarge1/matusd-rpi/RPI --emb_dir data/embeddings/rpi2825 --model_type rna_fm
 
 test model
-python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/epoch=47-step=654480-esm_rna_fm-seed=4623.ckpt --device gpu
+python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/last_esm_d_rnafm.ckpt --device gpu
