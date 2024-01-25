@@ -25,12 +25,11 @@ from torchmetrics.classification import BinaryPrecision, BinaryRecall, \
 
 
 class ModelWrapper(LightningModule):
-    def __init__(self, model, lr_init, weight_decay, seed):
+    def __init__(self, model, lr_init, weight_decay, t_max, warmup_steps, seed):
         super().__init__()
-        self.save_hyperparameters()  # for reconstructing model from checkpoint
-        if seed:
-            seed_everything(seed)
-        
+        seed_everything(seed)
+        self.save_hyperparameters()
+       
         self.model = model
         self.loss_metric = torch.nn.BCELoss()
         self.metrics = MetricCollection([
@@ -44,29 +43,28 @@ class ModelWrapper(LightningModule):
         self.weight_decay = weight_decay
         self.train_metrics = self.metrics.clone(prefix='train_')
         self.valid_metrics = self.metrics.clone(prefix='val_')
-        self.test_metrics = self.metrics.clone(prefix='test_')
         self.valid_losses = []
         self.train_losses = []
-        self.test_losses = []
+        self.t_max = t_max
+        self.warmup_steps = warmup_steps
 
     def forward(self, rna_embed, protein_embed):
         protein_embed = protein_embed.float()
         rna_embed = rna_embed.float()
         return self.model(rna_embed, protein_embed)
 
-    def training_step(self, batch, _):
+    def training_step(self, batch, batch_idx):
         rna_embed, protein_embed, y, _ = batch
         y = y.float()
         y_hat = self.forward(rna_embed, protein_embed)
         y_hat = y_hat.reshape(y_hat.shape[0])
         loss = self.loss_metric(y_hat, y)
         self.train_losses.append(loss.item())
-        self.log("train_loss", loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=False, logger=True, prog_bar=True)
         self.train_metrics.update(y_hat, y)
-
         return loss
 
-    def validation_step(self, batch, _):
+    def validation_step(self, batch, batch_idx):
         rna_embed, protein_embed, y, _ = batch
         y_hat = self(rna_embed, protein_embed)
         y_hat = y_hat.reshape(y_hat.shape[0])
@@ -77,25 +75,6 @@ class ModelWrapper(LightningModule):
         self.log("val_loss", loss, on_step=True, on_epoch=False, logger=True, prog_bar=True)
         self.valid_metrics.update(y_hat, y)
 
-    def test_step(self, batch, _):
-        rna_embed, protein_embed, y, _ = batch
-        y_hat = self(rna_embed, protein_embed)
-        y_hat = y_hat.reshape(y_hat.shape[0])
-        y = y.float()
-        loss = self.loss_metric(y_hat, y)
-        self.test_losses.append(loss.item())
-
-        self.log("test_loss", loss, on_step=True, on_epoch=False, logger=True, prog_bar=True)
-        self.test_metrics.update(y_hat, y)
-
-    def on_train_epoch_end(self) -> None:
-        output = self.train_metrics.compute()
-        self.log_dict(output)
-        train_loss = mean(self.train_losses)
-        self.log("train_loss_epoch", train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.train_losses = []
-        self.train_metrics.reset()
-
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
         self.log_dict(output, on_step=False, on_epoch=True)
@@ -105,18 +84,41 @@ class ModelWrapper(LightningModule):
         self.valid_losses = []
         self.valid_metrics.reset()
 
-    def on_test_epoch_end(self) -> None:
-        output = self.test_metrics.compute()
-        self.log_dict(output, on_step=False, on_epoch=True)
-        # remember to reset metrics at the end of the epoch
-        test_loss = mean(self.test_losses)
-        self.log("test_loss_epoch", test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.test_losses = []
-        self.test_metrics.reset()
+    def on_train_epoch_end(self) -> None:
+        output = self.train_metrics.compute()
+        self.log_dict(output)
+        train_loss = mean(self.train_losses)
+        self.log("train_loss_epoch", train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.train_losses = []
+        self.train_metrics.reset()
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
-        return optimizer
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=optimizer, 
+            T_max=self.t_max, 
+            eta_min=1e-5, 
+            last_epoch=-1, 
+            verbose=False
+        )
+
+        lr_scheduler = {
+                "scheduler": scheduler,
+                "interval": "epoch",
+                "frequency": 1,      
+                "name": "cosine_annealing"         
+            }
+        
+        return [optimizer], [lr_scheduler]
+
+
+    def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
+            if self.trainer.global_step <= self.warmup_steps:
+                lr_scale = float(self.trainer.global_step / self.warmup_steps)
+                for pg in optimizer.param_groups:
+                    pg["lr"] = lr_scale * self.lr_init
+
+            optimizer.step(closure=optimizer_closure)
 
     def _shared_eval(self, batch):
         protein_embed, rna_embed, y = batch
