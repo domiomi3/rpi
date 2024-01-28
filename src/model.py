@@ -43,8 +43,10 @@ class ModelWrapper(LightningModule):
         self.weight_decay = weight_decay
         self.train_metrics = self.metrics.clone(prefix='train_')
         self.valid_metrics = self.metrics.clone(prefix='val_')
+        self.test_metrics = self.metrics.clone(prefix='test_')
         self.valid_losses = []
         self.train_losses = []
+        self.test_losses = []
         self.t_max = t_max
         self.warmup_steps = warmup_steps
 
@@ -75,6 +77,17 @@ class ModelWrapper(LightningModule):
         self.log("val_loss", loss, on_step=True, on_epoch=False, logger=True, prog_bar=True)
         self.valid_metrics.update(y_hat, y)
 
+    def test_step(self, batch, _):
+        rna_embed, protein_embed, y, _ = batch
+        y_hat = self(rna_embed, protein_embed)
+        y_hat = y_hat.reshape(y_hat.shape[0])
+        y = y.float()
+        loss = self.loss_metric(y_hat, y)
+        self.test_losses.append(loss.item())
+
+        self.log("test_loss", loss, on_step=True, on_epoch=False, logger=True, prog_bar=True)
+        self.test_metrics.update(y_hat, y)
+
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
         self.log_dict(output, on_step=False, on_epoch=True)
@@ -92,6 +105,15 @@ class ModelWrapper(LightningModule):
         self.train_losses = []
         self.train_metrics.reset()
 
+    def on_test_epoch_end(self) -> None:
+        output = self.test_metrics.compute()
+        self.log_dict(output, on_step=False, on_epoch=True)
+        # remember to reset metrics at the end of the epoch
+        test_loss = mean(self.test_losses)
+        self.log("test_loss_epoch", test_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.test_losses = []
+        self.test_metrics.reset()
+        
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
         scheduler = optim.lr_scheduler.CosineAnnealingLR(
