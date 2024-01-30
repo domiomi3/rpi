@@ -121,13 +121,11 @@ python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_uniq
 
 python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_unique_proteins.parquet --emb_dir data/embeddings/rpi2825 --model_type esm2 --max_task_id 1 (15 min)
 
-python src/test.py --rna_embeddings_path data/embeddings/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/test_set.parquet --checkpoint_path "checkpoints/last-r_esm_rna_fm_90, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt"
+# OUR TEST
+python src/test.py --rna_embeddings_path data/embeddings/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/test_set.parquet --checkpoint_path "checkpoints/last-f_esm_rna_fm_90, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt"
 
-python src/test.py --rna_embeddings_path data/embeddings/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/test_set.parquet --checkpoint_path "checkpoints/last-r_esm_rna_fm_50, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt"
-
-
-
-python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path "checkpoints/last-r_esm_rna_fm_50, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt"
+# RPI2825
+python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path "checkpoints/last-r_esm_rna_fm_90, lr: 0.001, wd: 0.1, dr: 0.3, seed: 999.ckpt"
 
 ## one-hot encoding
 python dataset/embeddings/one_hot_encoding.py --sequence_type rna
@@ -215,3 +213,11 @@ python dataset/embeddings/esm_rna_fm.py --unique_seq_path data/annotations/rpi28
 
 test model
 python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path checkpoints/last_esm_d_rnafm.ckpt --device gpu
+
+
+## IPMINER
+run dataset/prepare_for_ipminer.ipynb
+
+git clone https://github.com/xypan1232/IPMiner.git
+
+python IPMiner/IPMiner.py -r "data/ipminer/rna.fasta" -p "data/ipminer/proteins.fasta"

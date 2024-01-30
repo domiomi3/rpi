@@ -164,12 +164,14 @@ cython_debug/
 LOGS/
 wandb/
 
+data/
 data/*
 !data/
 
 lightning_logs/
 checkpoints/
 .DS_Store
+CPR/
 
 RNAProteinInteractions/
 test_results/

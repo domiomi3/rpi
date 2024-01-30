@@ -15,7 +15,8 @@ def main(args):
     
     model = ModelWrapper.load_from_checkpoint(
         checkpoint_path=args.checkpoint_path,
-        map_location=torch.device('cpu') if args.device == 'cpu' else torch.device('cuda')
+        map_location=torch.device('cpu') if args.device == 'cpu' else torch.device('cuda'),
+        cpr=False,
     )
     
     model.eval()

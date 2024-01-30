@@ -10,30 +10,35 @@ from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 
 src_dir = Path.cwd().parent
 sys.path.append(str(src_dir))
-from model import RNAProteinInterAct, RNAProteinInterActSE, ModelWrapper
+from model import RNAProteinInterAct, RNAProteinInterActSE, ModelWrapper, BaseCNN
 from dataloader import get_dataloader
 
 
 def main(args):
     
     # Choose model based on embedding strategy
-    if args.one_hot_encoding:
-        model = RNAProteinInterActSE
+    if args.baseline:
+        rpi_model = BaseCNN(
+            device="cuda" if args.accelerator == "gpu" else "cpu",
+        )
     else:
-        model = RNAProteinInterAct
+        if args.one_hot_encoding:
+            model = RNAProteinInterActSE
+        else:
+            model = RNAProteinInterAct
 
-    # Initialize model
-    rpi_model = model( 
-        batch_first=True,
-        embed_dim=640,
-        d_model=args.d_model,
-        num_encoder_layers=args.num_encoder_layers,
-        nhead=args.n_head,
-        dim_feedforward=args.dim_feedforward,
-        key_padding_mask=args.key_padding_mask,
-        norm_first=True,
-        dropout=args.dropout
-     )
+        # Initialize model
+        rpi_model = model( 
+            batch_first=True,
+            embed_dim=640,
+            d_model=args.d_model,
+            num_encoder_layers=args.num_encoder_layers,
+            nhead=args.n_head,
+            dim_feedforward=args.dim_feedforward,
+            key_padding_mask=args.key_padding_mask,
+            norm_first=True,
+            dropout=args.dropout
+        )
     
     # Wrap model in a LightningModule
     lightning_module = ModelWrapper(
@@ -43,6 +48,7 @@ def main(args):
         t_max=args.max_epochs,
         warmup_steps = args.warmup_steps,
         seed=args.seed,
+        cpr=args.cpr
     )
     
     full_exp_name = f"{args.wandb_run_name}, lr: {args.lr_init}, \
@@ -105,6 +111,7 @@ if __name__ == '__main__':
     parser.add_argument("--wandb_run_name", default="default", help="Name of the wandb run")
     parser.add_argument("--wandb_group", default="default", help="Name of the wandb group")
 
+    parser.add_argument("--baseline", action='store_true', default=False, help="Runs baseline CNN model")
     parser.add_argument("--one_hot_encoding", action='store_true', default=False, help="Enables one-hot encoding")
     parser.add_argument("--num_encoder_layers", type=int, default=1, help="Number of encoder layers")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
@@ -117,6 +124,7 @@ if __name__ == '__main__':
     parser.add_argument("--lr_init", type=float, default=0.001, help="Initial learning rate")
     parser.add_argument("--loader_type", default="RPIDataset", help="Type of dataloader")
     
+    parser.add_argument("--cpr", action='store_true', default=False, help="Sets AdamCPR as optimizer") 
     parser.add_argument("--warmup_steps", type=int, default=0, help="Number of warmup steps")
     parser.add_argument("--max_epochs", type=int, default=1, required=True, help="Maximum number of epochs")
     parser.add_argument("--num_dataloader_workers", type=int, default=8, help="Number of dataloader workers")
