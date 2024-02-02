@@ -172,6 +172,7 @@ lightning_logs/
 checkpoints/
 .DS_Store
 CPR/
+old/
 
 RNAProteinInteractions/
 test_results/

@@ -594,6 +594,11 @@ class BaseCNN(Module):
         self.activation = torch.relu
 
     def forward(self, x_1, x_2):
+        if x_1.size(-1) != 640:
+            x_1 = F.pad(x_1, (0, 640 - x_1.size(-1)))
+
+        if x_2.size(-1) != 640:
+            x_2 = F.pad(x_2, (0, 640 - x_2.size(-1)))
         x = torch.cat((x_1, x_2), 1)
         x = self.activation(self.conv1(x))
         x = x.flatten(start_dim=1)

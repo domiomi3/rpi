@@ -57,7 +57,7 @@ def main(args):
     # Initialize logger
     if args.wandb:
         logger = lightning.pytorch.loggers.WandbLogger(
-            project="RPI",
+            project="rpi-iclr",
             name=full_exp_name,
             group=args.wandb_group
         )
@@ -72,7 +72,7 @@ def main(args):
         mode='min',  # Mode for the monitored metric, 'min' for minimization
         save_last=True,  # Save the last checkpoint in addition to the best ones
     )
-    checkpoint_callback.CHECKPOINT_NAME_LAST = "last-" + full_exp_name
+    checkpoint_callback.CHECKPOINT_NAME_LAST = "last-" + args.wandb_group + "_" + full_exp_name
 
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
