@@ -122,10 +122,18 @@ python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_uniq
 python dataset/embeddings/esm_rna_fm.py --rna_path data/annotations/rpi2825_unique_proteins.parquet --emb_dir data/embeddings/rpi2825 --model_type esm2 --max_task_id 1 (15 min)
 
 # OUR TEST
-python src/test.py --rna_embeddings_path data/embeddings/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/r_test_set.parquet --checkpoint_path "checkpoints/last-r_rand_rna, lr: 0.001, wd: 0.1, dr: 0.3, seed: 17.ckpt"
+esmrafm
+python src/test.py --rna_embeddings_path data/embeddings/rna_embeddings.npy --protein_embeddings_path data/embeddings/protein_embeddings.npy --test_set_path data/interactions/test_set.parquet --checkpoint_path "checkpoints/last-rpi_emb_esm_rna_fm_rpi_embeddor, lr: 0.001,             wd: 0.1, dr: 0.3, seed: 6844.ckpt"
+
+# predict
+python src/predict.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path "checkpoints/last-rpi_emb_esm_rna_fm_rpi_embeddor, lr: 0.001,             wd: 0.1, dr: 0.3, seed: 6844.ckpt"
+
+# onehot
+python src/test.py --protein_embeddings_path data/embeddings/one_hot_protein.npy --rna_embeddings_path data/embeddings/one_hot_rna.npy --test_set_path /work/dlclarge1/matusd-rpi/RPI/data/interactions/test_set.parquet --checkpoint_path "checkpoints/last-rpiemb_rand_rna, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt"
+
 
 # RPI2825
-python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path "checkpoints//work/dlclarge1/matusd-rpi/RPI/test_results/last-r_one_hot, lr: 0.001, wd: 0.1, dr: 0.3, seed: 17.ckpt"
+python src/test.py --rna_embeddings_path data/embeddings/rpi2825/rna_embeddings.npy --protein_embeddings_path data/embeddings/rpi2825/protein_embeddings.npy --test_set_path data/interactions/rpi2825_test_set.parquet --checkpoint_path "checkpoints/last-rpi_emb_esm_rna_fm_rpi_embeddor, lr: 0.001,             wd: 0.1, dr: 0.3, seed: 17.ckpt"
 
 ## one-hot encoding
 python dataset/embeddings/one_hot_encoding.py --sequence_type rna

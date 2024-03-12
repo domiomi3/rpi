@@ -96,6 +96,14 @@ class ModelWrapper(LightningModule):
         self.log("test_loss", loss, on_step=True, on_epoch=False, logger=True, prog_bar=True)
         self.test_metrics.update(y_hat, y)
 
+    def predict_step(self, batch, batch_idx):
+        # Similar to test_step but without logging
+        rna_embed, protein_embed, y, _ = batch
+        y_hat = self(rna_embed, protein_embed)
+        y_hat = y_hat.reshape(y_hat.shape[0])
+        y = y.int()
+        return {'logits': y_hat, 'labels': y}
+
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
         self.log_dict(output, on_step=False, on_epoch=True)
