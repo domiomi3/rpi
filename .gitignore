@@ -169,7 +169,8 @@ data/*
 !data/
 
 lightning_logs/
-checkpoints/
+checkpoints/*
+!checkpoints/last-esm_rnafm_rpiembeddor, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt
 .DS_Store
 CPR/
 old/
