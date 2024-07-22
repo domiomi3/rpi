@@ -6,8 +6,6 @@ from typing import Optional, Union, Callable
 from statistics import mean
 
 rpi_dir = Path(__file__).resolve().parent.parent
-sys.path.append(str(rpi_dir / 'CPR'))
-from pytorch_cpr.wrapper import apply_CPR
 
 from typing import Tuple
 
@@ -32,7 +30,7 @@ from torchmetrics.classification import BinaryPrecision, BinaryRecall, \
 
 
 class ModelWrapper(LightningModule):
-    def __init__(self, model, lr_init, weight_decay, t_max, warmup_steps, seed, cpr):
+    def __init__(self, model, lr_init, weight_decay, t_max, warmup_steps, seed):
         super().__init__()
         seed_everything(seed)
         self.save_hyperparameters()
@@ -56,7 +54,6 @@ class ModelWrapper(LightningModule):
         self.test_losses = []
         self.t_max = t_max
         self.warmup_steps = warmup_steps
-        self.cpr = cpr
 
     def forward(self, rna_embed, protein_embed):
         protein_embed = protein_embed.float()
@@ -131,39 +128,31 @@ class ModelWrapper(LightningModule):
         self.test_metrics.reset()
         
     def configure_optimizers(self):
-        if self.cpr:
-            optimizer = apply_CPR(self.model, torch.optim.Adam, kappa_init_param=self.warmup_steps*2, kappa_init_method='warm_start',
-                                lr=0.001, betas=(0.9, 0.98))
-            return optimizer
-        else:
-            optimizer = optim.AdamW(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
-            scheduler = optim.lr_scheduler.CosineAnnealingLR(
-                optimizer=optimizer, 
-                T_max=self.t_max, 
-                eta_min=1e-5, 
-                last_epoch=-1, 
-                verbose=False
-            )
+        optimizer = optim.AdamW(self.parameters(), lr=self.lr_init, weight_decay=self.weight_decay)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=optimizer, 
+            T_max=self.t_max, 
+            eta_min=1e-5, 
+            last_epoch=-1, 
+            verbose=False
+        )
 
-            lr_scheduler = {
-                    "scheduler": scheduler,
-                    "interval": "epoch",
-                    "frequency": 1,      
-                    "name": "cosine_annealing"         
-                }
-            
-            return [optimizer], [lr_scheduler]
+        lr_scheduler = {
+                "scheduler": scheduler,
+                "interval": "epoch",
+                "frequency": 1,      
+                "name": "cosine_annealing"         
+            }
+        
+        return [optimizer], [lr_scheduler]
 
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
-        if self.cpr:
-            optimizer.step(closure=optimizer_closure)
-        else:
-            if self.trainer.global_step <= self.warmup_steps:
-                lr_scale = float(self.trainer.global_step / self.warmup_steps)
-                for pg in optimizer.param_groups:
-                    pg["lr"] = lr_scale * self.lr_init
+        if self.trainer.global_step <= self.warmup_steps:
+            lr_scale = float(self.trainer.global_step / self.warmup_steps)
+            for pg in optimizer.param_groups:
+                pg["lr"] = lr_scale * self.lr_init
 
-            optimizer.step(closure=optimizer_closure)
+        optimizer.step(closure=optimizer_closure)
 
     def _shared_eval(self, batch):
         protein_embed, rna_embed, y = batch

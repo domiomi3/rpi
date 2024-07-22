@@ -26,7 +26,7 @@ class Config:
         self.max_task_id = 1
         self.task_id = 1
         self.emb_id = 1
-        self.checkpoint_path = "checkpoints/epoch=0-step=100-default-seed=0-v6.ckpt"
+        self.checkpoint_path = "checkpoints/last-esm_rnafm_rpiembeddor, lr: 0.001, wd: 0.1, dr: 0.3, seed: 6844.ckpt"
         
         self.__dict__.update(kwargs)
 
